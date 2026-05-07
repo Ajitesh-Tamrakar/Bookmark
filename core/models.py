@@ -1,7 +1,7 @@
 from django.db import models
 import uuid
 # Create your models here.
-class bookmark(models.Model):
+class Bookmark(models.Model):
 
     class Platform(models.TextChoices):
         YOUTUBE = 'youtube', 'YouTube'
@@ -50,3 +50,28 @@ class bookmark(models.Model):
 
     class Meta:
         db_table = 'bookmarks'
+
+class Tags(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=50, null=False, blank=False, unique=True)
+
+    class Meta:
+        db_table = 'tags'
+class BookmarkTags(models.Model):
+    class Source(models.TextChoices):
+        AI = 'ai', 'AI Generated'
+        MANUAL = 'manual', 'Manually Added'
+
+    bookmark = models.ForeignKey('Bookmark', on_delete=models.CASCADE, db_column='bookmark_id')
+    tag = models.ForeignKey('Tags', on_delete=models.CASCADE, db_column='tag_id' )
+    source = models.CharField(max_length=50, choices=Source.choices)
+
+    class Meta:
+        db_table = 'bookmark_tags'
+        constraints = [
+            models.UniqueConstraint(
+                fields= ['bookmark', 'tag'],
+                name = 'bookmark_tag'
+            )
+        ]
+
