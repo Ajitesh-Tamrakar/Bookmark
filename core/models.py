@@ -145,6 +145,7 @@ class Config(models.Model):
     #System 
     setup_complete = models.BooleanField(default=False)
     server_port = models.IntegerField(default=8080)
+    dev_mode = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         self.id = 1
