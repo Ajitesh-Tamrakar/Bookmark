@@ -33,6 +33,12 @@ class Bookmark(models.Model):
         API     = 'api',     'YouTube Transcript API'
         WHISPER = 'whisper', 'Whisper (local)'
 
+    class Stages(models.TextChoices):
+        EXTRACTION = 'extraction'
+        TAGGING = 'tagging'
+        CHUNKING = 'chunking'
+        EMBEDDING = 'embedding'
+
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     url = models.TextField(null=False)
@@ -42,6 +48,7 @@ class Bookmark(models.Model):
     processing_status = models.CharField(max_length=50, choices=Processing_Status.choices, default=Processing_Status.PENDING)
     processing_error = models.TextField(null=True, blank=True)
     retry_count = models.IntegerField(default=0)
+    failed_at = models.CharField(null=True, choices=Stages)
     capture_method = models.CharField(max_length=50, choices=CaptureMethod.choices, null=True, blank=True)     
     raw_text = models.TextField(null=True, blank=True)
     author = models.CharField(max_length=100, null=True, blank=True)
