@@ -5,7 +5,6 @@ from core.models import Config
 EXEMPT_PATH = [
     '/setup/',
     '/admin/',
-    '/home/'
 ]
 
 class SetupRequiredMiddleware:
