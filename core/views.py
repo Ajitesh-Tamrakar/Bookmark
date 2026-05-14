@@ -59,9 +59,6 @@ def setup_embedding(request):
         )   
 
 
-
-    
-
 #Dev check 
 def dev_wipe(request):
     Config = Config.get()
