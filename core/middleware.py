@@ -4,7 +4,8 @@ from core.models import Config
 
 EXEMPT_PATH = [
     '/setup/',
-    '/admin/'
+    '/admin/',
+    '/home/'
 ]
 
 class SetupRequiredMiddleware:
@@ -15,7 +16,7 @@ class SetupRequiredMiddleware:
         #check if path is exempted ?
 
         for path in EXEMPT_PATH:
-            if request.path.startwith(path):
+            if request.path.startswith(path):
                 return self.get_response(request)
             
 
@@ -32,4 +33,4 @@ class SetupRequiredMiddleware:
             return JsonResponse(
                 {'error': 'Config not found. Run migrations first.'}
             )
-        return self.get_response
+        return self.get_response(request)
