@@ -1,5 +1,5 @@
 from youtube_transcript_api import YouTubeTranscriptApi
-from core.models import Bookmark, Tag, BookmarkTag, Chunk
+from core.models import Bookmark, Tag, BookmarkTag, Chunk, Config
 from django.utils.timezone import now
 
 def extraction(bookmark):
@@ -206,6 +206,10 @@ def run_pipeline(bookmark):
             break
         elif report['stage'] == 'embedding' and report['status'] == 'success':
             Bookmark.objects.filter(bookmark = bookmark.id).update(processing_status = 'complete', processed_at = now())
+            config = Config.objects.get(id = 1)
+            if config.embedding_locked == False:
+                Config.objects.filter(id=1).update(embedding_locked = True)
+                
             return True #meaning everything went well 
     return False 
 
