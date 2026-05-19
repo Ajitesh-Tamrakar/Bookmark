@@ -1,30 +1,51 @@
 from youtube_transcript_api import YouTubeTranscriptApi
 from core.models import Bookmark, Tag, BookmarkTag, Chunk, Config
 from django.utils.timezone import now
-
+import json
+from urllib.parse import urlparse, parse_qs
+import logging
+logger = logging.getLogger(__name__)
 def extraction(bookmark):
+    logger.info(f'Starting extraction for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
     url = bookmark.url
-    id = bookmark.id
+    bookmark_id = bookmark.id
 
 
 
-    if bookmark.platform == 'youtube' and bookmark.content_type == 'video':
+    if bookmark.platform == 'Youtube' and bookmark.content_type == 'video':
 
         try:
-            transcript = YouTubeTranscriptApi().fetch(url)
-            Bookmark.objects.filter(id =id).update(raw_text = transcript)
+            parsed_url = urlparse(url)
+            query_params = parse_qs(parsed_url.query)
+            video_id = query_params.get('v')[0]
+            logger.info(f'Extracted video ID: {video_id} from URL: {url} for bookmark ID: {bookmark.id}')
+
+            transcript = YouTubeTranscriptApi().fetch(video_id,  languages=['en', 'hi'])
+            logger.info(f'Fetched transcript for video ID: {video_id} successfully for bookmark ID: {bookmark.id}')
+            wrapper = []
+            for line in transcript:
+                wrapper.append({
+                    'text': line.text,
+                    'start': line.start,
+                    'duration': line.duration
+                })           
+            logger.info(f'YouTube transcript fetched successfully for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
+            Bookmark.objects.filter(id=bookmark_id).update(raw_text = json.dumps(wrapper))
             return {'stage':'extraction', 'status': 'success', 'error': ''}
         except Exception as e:
+            logger.error(f'Error occurred while fetching YouTube transcript for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
+            logger.info(f'Falling back to Whisper for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
             #fall back to whiper 
 
             try:
                 #Loading whipser
                 #give audio of video to whisper
-                Bookmark.objects.filter(id= id).update(raw_text='wisper given text')
+                Bookmark.objects.filter(id=bookmark_id).update(raw_text='wisper given text')
                 return {'stage': 'extraction', 'status': 'success', 'error': ''}
-                pass
+                
             except Exception as e:
                 #log reason whisper didn't worked 
+                logger.error(f'Error occurred while fetching transcript using Whisper for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
                 return {'stage': 'extraction', 'status': 'failed', 'error': str(e)}
 
     elif bookmark.content_type == 'video':
