@@ -57,13 +57,13 @@ function injectSaveButton() {
             const authorLink = channel ? channel.href : ''
 
             const data = {
-                'video_url': videoUrl,
+                'url': videoUrl,
                 'title': title,
                 'platform': 'Youtube',
                 'content_type': 'video',
                 'capture_method': 'Platform_injection',
                 'author': author,
-                authorLink: authorLink,
+                'author_link': authorLink,
             }
 
 
