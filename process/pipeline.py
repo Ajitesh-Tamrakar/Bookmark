@@ -5,7 +5,8 @@ import json
 from urllib.parse import urlparse, parse_qs
 import logging
 from ollama import chat
-
+from transformers import AutoTokenizer
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 logger = logging.getLogger(__name__)
 
 
@@ -226,19 +227,31 @@ def tagging(bookmark):
 
 def chunking(bookmark):
     logger.info(f'chunking stage skipped for bookmark ID: {bookmark.id}, URL: {bookmark.url} because tagging stage did not produce any tags')
-    return {'stage': 'chunking', 'status': 'failed', 'error': 'skipping chunking because no tags were generated in tagging stage'}
+    # return {'stage': 'chunking', 'status': 'failed', 'error': 'skipping chunking because no tags were generated in tagging stage'}
     id = bookmark.id
-    raw_text = bookmark.raw_text
+    raw_text = json.loads(bookmark.raw_text)
 
     if raw_text is None:
         return {'stage': 'chunking', 'status': 'failed', 'error': 'raw_text is None'}
 
-    if bookmark.platform == 'youtube':
+    if bookmark.platform == 'Youtube':
         # need to implement group of 300-500 in improvement time
         # I'll make sure to convert data from raw_text is converted in python object
-        for line in raw_text:
-            Chunk.objects.create(text=line.text, timestamp_seconds=line.start, bookmark=bookmark, chunk_type='video',
-                                 word_count=len(line.text))
+        script = ''.join([line['text'] for line in raw_text])
+
+
+        tokenizer = AutoTokenizer.from_pretrained("google/gemma-4-E2B")
+        splitter = RecursiveCharacterTextSplitter(
+                tokenizer=tokenizer,
+                chunk_size=1000,
+                chunk_overlap=150,
+
+            )
+        chunks = splitter.split_text(script)
+
+        for chunk in chunks:
+                Chunk.objects.create(text=chunk, bookmark=bookmark, chunk_type='video', word_count=len(chunk))
+
         return {'stage': 'chunking', 'status': 'success', 'error': ''}
     # there no field in bookmark table which stores user notes or there is not functionality which help use to check user gave a note even if we directly store that chunk tabel
 
