@@ -4,59 +4,60 @@ from django.utils.timezone import now
 import json
 from urllib.parse import urlparse, parse_qs
 import logging
-from ollama import chat
+from ollama import embed
 from transformers import AutoTokenizer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from process.ollama_chats import generate_tags_for_chunk, generate_hierarchical_tags
+from process.helper_function import normalize_tag
 logger = logging.getLogger(__name__)
 
+# def get_tag(content):
+#     logger.info(f'Generating tags using Ollama for content of length: {len(content)}')
 
-def get_tag(content):
-    logger.info(f'Generating tags using Ollama for content of length: {len(content)}')
+#     schema = {
+#         'type': 'array',
+#         'items': {
+#             'type': 'string'
+#         },
+#         'minItems': 2,
+#         'maxItems': 5
+#     }
 
-    schema = {
-        'type': 'array',
-        'items': {
-            'type': 'string'
-        },
-        'minItems': 2,
-        'maxItems': 5
-    }
+#     response = chat(
+#         model='gemma4:e2b',
+#         messages=[
+#             {
+#                 'role': 'system',
+#                 'content': (
+#                     "You generate concise topic tags. "
+#                     "Return only relevant tags."
+#                 )
+#             },
+#             {
+#                 'role': 'user',
+#                 'content': f"""
+#                         Generate 2-5 short tags for the following content.
 
-    response = chat(
-        model='gemma4:e2b',
-        messages=[
-            {
-                'role': 'system',
-                'content': (
-                    "You generate concise topic tags. "
-                    "Return only relevant tags."
-                )
-            },
-            {
-                'role': 'user',
-                'content': f"""
-                        Generate 2-5 short tags for the following content.
+#                         Rules:
+#                         - Tags should be concise
+#                         - 1-3 words per tag
+#                         - No duplicate tags
+#                         - Focus on main topics
 
-                        Rules:
-                        - Tags should be concise
-                        - 1-3 words per tag
-                        - No duplicate tags
-                        - Focus on main topics
+#                         Content:
+#                         {content}
+#                         """
+#             }
+#         ],
+#         format=schema,
+#         options={
+#             'temperature': 0.2,
+#         }
+#     )
 
-                        Content:
-                        {content}
-                        """
-            }
-        ],
-        format=schema,
-        options={
-            'temperature': 0.2,
-        }
-    )
+#     logger.info(f'Received response from Ollama for tag generation: {response.message.content}')
 
-    logger.info(f'Received response from Ollama for tag generation: {response.message.content}')
-
-    return json.loads(response['message']['content'])
+#     return json.loads(response['message']['content'])
 
 def extraction(bookmark):
     logger.info(f'Starting extraction for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
@@ -68,6 +69,9 @@ def extraction(bookmark):
         try:
             parsed_url = urlparse(url)
             query_params = parse_qs(parsed_url.query)
+            if query_params.get('v') is None:
+                logger.error(f'No video ID found in URL: {url} for bookmark ID: {bookmark.id}')
+                return {'stage': 'extraction', 'status': 'failed', 'error': 'No video ID found in URL'}
             video_id = query_params.get('v')[0]
             logger.info(f'Extracted video ID: {video_id} from URL: {url} for bookmark ID: {bookmark.id}')
 
@@ -166,17 +170,27 @@ def tagging(bookmark):
 
     try:
         if bookmark.platform == 'Youtube':
-            script = json.loads(raw_text)
-            full_text = ' '.join([line['text'] for line in script])
-            generated_tags = get_tag(full_text)
-            logger.info(
-                f'Generated tags for YouTube video ID: {bookmark.id}, URL: {bookmark.url}, Tags: {generated_tags}')
+            chunk_texts = Chunk.objects.filter(bookmark=bookmark).values_list('text', flat=True)
+            all_chunk_tags = []
+            for i, chunk in enumerate(chunk_texts):
+                try:
+                    tags = generate_tags_for_chunk(chunk)
+                    logger.info(f'Generated tags for chunk {i} from {len(chunk_texts)} chunks form in  bookmark ID: {bookmark.id}, URL: {bookmark.url}, Tags: {tags}')
+                    for i, tag in enumerate(tags):
+                        normalized_tag = normalize_tag(tag)
+                        tags[i] = normalized_tag
 
+                    all_chunk_tags.extend(tags)
 
-        else:
-            generated_tags = get_tag(raw_text)
-            logger.info(f'Generated tags for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Tags: {generated_tags}')
-
+                except Exception as e:
+                    logger.error(f'Error occurred while generating tags for chunk {i} from {len(chunk_texts)} chunks form in  bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
+            all_chunk_tags = list(set(all_chunk_tags))
+            try:
+                generated_tags = generate_hierarchical_tags(all_chunk_tags)
+                logger.info(f'Generated hierarchical tags for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Tags: {generated_tags}')
+            except Exception as e:
+                logger.error(f'Error occurred while generating hierarchical tags for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
+            
 
     except Exception as e:
         logger.error(
@@ -227,8 +241,6 @@ def tagging(bookmark):
 
 def chunking(bookmark):
     logger.info(f'chunking stage skipped for bookmark ID: {bookmark.id}, URL: {bookmark.url} because tagging stage did not produce any tags')
-    # return {'stage': 'chunking', 'status': 'failed', 'error': 'skipping chunking because no tags were generated in tagging stage'}
-    id = bookmark.id
     raw_text = json.loads(bookmark.raw_text)
 
     if raw_text is None:
@@ -241,7 +253,7 @@ def chunking(bookmark):
 
 
         tokenizer = AutoTokenizer.from_pretrained("google/gemma-4-E2B")
-        splitter = RecursiveCharacterTextSplitter(
+        splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
                 tokenizer=tokenizer,
                 chunk_size=1000,
                 chunk_overlap=150,
@@ -282,18 +294,21 @@ def chunking(bookmark):
 def embedding(bookmark):
     # first load mode gloabally
     logger.info(f'embedding stage skipped for bookmark ID: {bookmark.id}, URL: {bookmark.url} because chunking stage did not produce any chunks')
-    return {'stage': 'embedding', 'status': 'failed', 'error': 'skipping embedding because no chunks were generated in chunking stage'}
-    text_id_pair = Chunk.objects.filter(bookmark=bookmark, embedding=None).values_list('id', 'text')
-    for tuple in text_id_pair:
-        id = tuple[0]
-        text = tuple[1]
+    # return {'stage': 'embedding', 'status': 'failed', 'error': 'skipping embedding because no chunks were generated in chunking stage'}
+    non_embedded_chunks = Chunk.objects.filter(bookmark=bookmark, embedding=None)
+    for chunk in non_embedded_chunks:
         try:
             # access model and feed text
-            model = 'embedding_mode'
-            Chunk.objects.filter(id=id).update(embedding=model(text))
+            response = embed(
+                model = 'nomic-embed-text-v2-moe', 
+                input = chunk.text
+            )
+            embedding = response.embeddings[0]
+            Chunk.objects.filter(id=chunk.id).update(embedding=embedding)
 
         except Exception as e:
             return {'stage': 'embedding', 'status': 'failed', 'error': f'embedding failed: {str(e)}'}
+    logger.info(f'Embedding completed for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
     count = Chunk.objects.filter(bookmark=bookmark, embedding=None).count()
     if count == 0:
         return {'stage': 'embedding', 'status': 'success', 'error': ''}
@@ -303,7 +318,8 @@ def embedding(bookmark):
 
 def run_pipeline(bookmark):
     # stages = [extraction, tagging, chunking, embedding]
-    stages = [tagging, chunking, embedding]
+    # stages = [chunking, tagging, embedding]
+    stages = [embedding]
     logger.info(f'Starting pipeline for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
 
     for stage in stages:
@@ -319,7 +335,7 @@ def run_pipeline(bookmark):
             bookmark.refresh_from_db()
             break
         elif report['stage'] == 'embedding' and report['status'] == 'success':
-            Bookmark.objects.filter(bookmark=bookmark.id).update(processing_status='complete', processed_at=now())
+            Bookmark.objects.filter(id=bookmark.id).update(processing_status='complete', processed_at=now())
             config = Config.objects.get(id=1)
             if config.embedding_locked == False:
                 Config.objects.filter(id=1).update(embedding_locked=True)
