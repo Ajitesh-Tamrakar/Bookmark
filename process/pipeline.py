@@ -11,53 +11,6 @@ from process.ollama_chats import generate_tags_for_chunk, generate_hierarchical_
 from process.helper_function import normalize_tag
 logger = logging.getLogger(__name__)
 
-# def get_tag(content):
-#     logger.info(f'Generating tags using Ollama for content of length: {len(content)}')
-
-#     schema = {
-#         'type': 'array',
-#         'items': {
-#             'type': 'string'
-#         },
-#         'minItems': 2,
-#         'maxItems': 5
-#     }
-
-#     response = chat(
-#         model='gemma4:e2b',
-#         messages=[
-#             {
-#                 'role': 'system',
-#                 'content': (
-#                     "You generate concise topic tags. "
-#                     "Return only relevant tags."
-#                 )
-#             },
-#             {
-#                 'role': 'user',
-#                 'content': f"""
-#                         Generate 2-5 short tags for the following content.
-
-#                         Rules:
-#                         - Tags should be concise
-#                         - 1-3 words per tag
-#                         - No duplicate tags
-#                         - Focus on main topics
-
-#                         Content:
-#                         {content}
-#                         """
-#             }
-#         ],
-#         format=schema,
-#         options={
-#             'temperature': 0.2,
-#         }
-#     )
-
-#     logger.info(f'Received response from Ollama for tag generation: {response.message.content}')
-
-#     return json.loads(response['message']['content'])
 
 def extraction(bookmark):
     logger.info(f'Starting extraction for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
@@ -164,6 +117,7 @@ def extraction(bookmark):
 
 
 def tagging(bookmark):
+    bookmark.refresh_from_db()
     logger.info(f'Starting tagging for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
     bookmark_id = bookmark.id
     raw_text = bookmark.raw_text
@@ -240,13 +194,20 @@ def tagging(bookmark):
 
 
 def chunking(bookmark):
-    logger.info(f'chunking stage skipped for bookmark ID: {bookmark.id}, URL: {bookmark.url} because tagging stage did not produce any tags')
-    raw_text = json.loads(bookmark.raw_text)
+    bookmark.refresh_from_db()
+    logger.info(f'Starting chunking for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
+    try:
+        raw_text = json.loads(bookmark.raw_text)
+    except Exception as e:
+        logger.error(f'Error occurred while loading raw_text for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
+        return {'stage': 'chunking', 'status': 'failed', 'error': f'Error loading raw_text: {str(e)}'}
 
     if raw_text is None:
+        logger.error(f'Raw text is None for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
         return {'stage': 'chunking', 'status': 'failed', 'error': 'raw_text is None'}
 
     if bookmark.platform == 'Youtube':
+        logger.info(f'Using YouTube specific chunking for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
         # need to implement group of 300-500 in improvement time
         # I'll make sure to convert data from raw_text is converted in python object
         script = ''.join([line['text'] for line in raw_text])
@@ -293,6 +254,7 @@ def chunking(bookmark):
 
 def embedding(bookmark):
     # first load mode gloabally
+    bookmark.refresh_from_db()
     logger.info(f'embedding stage skipped for bookmark ID: {bookmark.id}, URL: {bookmark.url} because chunking stage did not produce any chunks')
     # return {'stage': 'embedding', 'status': 'failed', 'error': 'skipping embedding because no chunks were generated in chunking stage'}
     non_embedded_chunks = Chunk.objects.filter(bookmark=bookmark, embedding=None)
@@ -317,9 +279,9 @@ def embedding(bookmark):
 
 
 def run_pipeline(bookmark):
-    # stages = [extraction, tagging, chunking, embedding]
-    # stages = [chunking, tagging, embedding]
-    stages = [embedding]
+  
+    stages = [extraction, chunking, tagging, embedding]
+
     logger.info(f'Starting pipeline for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
 
     for stage in stages:

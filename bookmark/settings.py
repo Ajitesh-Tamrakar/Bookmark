@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'core',
     'capture',
     'process',
+    'retrieve',
 ]
 
 MIDDLEWARE = [
