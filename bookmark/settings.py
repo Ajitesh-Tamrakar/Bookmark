@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'capture',
     'process',
     'retrieve',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -55,7 +56,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'core.middleware.SetupRequiredMiddleware'
+    'core.middleware.SetupRequiredMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+
 ]
 
 ROOT_URLCONF = 'bookmark.urls'
@@ -179,5 +182,9 @@ STATIC_URL = 'static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
