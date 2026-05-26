@@ -1,10 +1,8 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from core.models import Chunk, Bookmark, Tag, BookmarkTag
+from core.models import Chunk, Bookmark, BookmarkTag
 from pgvector.django import CosineDistance
 from ollama import embed
-from django.core.serializers.json import DjangoJSONEncoder
-import json
 from django.db.models import Min
 import logging
 logger = logging.getLogger(__name__)
@@ -32,7 +30,7 @@ def search(request):
     }
     for i in distance_values:
         if i["min_distance"] < 0.6:
-            bookmark = Bookmark.objects.filter(id=i["bookmark_id"]).values("title", "url", 'platform', 'author' ).first()
+            bookmark = Bookmark.objects.filter(id=i["bookmark_id"]).values("id", "title", "url", 'platform', 'author', 'saved_at' ).first()
             tags = list(BookmarkTag.objects.filter(bookmark_id=i["bookmark_id"]).values_list('tag__name', flat=True))
             bookmark['distance'] = i["min_distance"] #type: ignore
             playload['results'].append(bookmark)
