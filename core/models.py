@@ -144,7 +144,7 @@ class Config(models.Model):
     whisper_model_name = models.CharField(max_length=20, choices=WhisperModel.choices, null=True, blank=True)
 
     #System 
-    setup_complete = models.BooleanField(default=False)
+    setup_complete = models.BooleanField(default=True)
     server_port = models.IntegerField(default=8080)
     dev_mode = models.BooleanField(default=False)
 
