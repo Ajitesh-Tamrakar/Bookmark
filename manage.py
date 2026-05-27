@@ -2,13 +2,18 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
-
-
+import environ
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent
+env  = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR,'.env'))
+from django.core.management.commands.runserver import Command as runserver
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bookmark.settings')
     try:
         from django.core.management import execute_from_command_line
+        runserver.default_port = env('PORT', default=8080)   #type: ignore
     except ImportError as exc:
         raise ImportError(
             "Couldn't import Django. Are you sure it's installed and "
