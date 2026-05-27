@@ -6,3 +6,4 @@ venv
 .DS_Store
 *.log
 temp/
+frontend/README.md
