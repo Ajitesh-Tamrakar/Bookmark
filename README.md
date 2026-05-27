@@ -116,6 +116,3 @@ Export your full library at any time from app settings as a single SQLite file.
 
 ---
 
-## License
-
-MIT — see [LICENSE](LICENSE)
