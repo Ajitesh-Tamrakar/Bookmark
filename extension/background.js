@@ -6,7 +6,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const payload = message.data;
 
-        fetch('http://127.0.0.1:8000/capture/save/', {
+        fetch('http://127.0.0.1:8080/capture/save/', {
 
             method: 'POST',
 

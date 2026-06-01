@@ -7,7 +7,7 @@ export default function Search() {
     const [message, setMessage] = useState('');
 
     const handleSearch = async (query) => {
-        const res = await fetch(`http://localhost:8000/retrieve/search/?q=${query}`);
+        const res = await fetch(`http://localhost:8080/retrieve/search/?q=${query}`);
         const data = await res.json();
         setResults(data.results);
         setMessage(data.message);

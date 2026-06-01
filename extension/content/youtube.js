@@ -16,6 +16,8 @@ function injectSaveButton() {
 
     // Clone Share button
     const saveWrapper = shareWrapper.cloneNode(true);
+    console.log("SAVE WRAPPER:", saveWrapper);
+    console.log("SAVE WRAPPER HTML:", saveWrapper.innerHTML);
 
     saveWrapper.classList.add("my-save-btn-wrapper");
 
@@ -28,16 +30,34 @@ function injectSaveButton() {
         text.textContent = "Save";
     }
 
+    // Replace icon
+    const iconWrapper = saveWrapper.querySelector(".ytIconWrapperHost");
+
+    console.log("ICON WRAPPER:", iconWrapper);
+
+    if (iconWrapper) {
+
+        const iconUrl = chrome.runtime.getURL("icons/glean.svg");
+
+        iconWrapper.innerHTML = `
+        <img
+            src="${iconUrl}"
+            style="
+                width:30px;
+                height:30px;
+                display:block;
+                object-fit:contain;
+                
+            "
+        />
+    `;
+    }
     // Find actual button
     const btn = saveWrapper.querySelector("button");
+
     const channel = document.querySelector(
         'ytd-video-owner-renderer ytd-channel-name a'
     );
-
-
-
-
-
 
     if (btn) {
 
@@ -52,28 +72,32 @@ function injectSaveButton() {
         newBtn.addEventListener("click", () => {
 
             const videoUrl = window.location.href;
-            const title = document.title
-            const author = channel ? channel.textContent.trim(): ''
-            const authorLink = channel ? channel.href : ''
+            const title = document.title;
+
+            const author = channel
+                ? channel.textContent.trim()
+                : '';
+
+            const authorLink = channel
+                ? channel.href
+                : '';
 
             const data = {
-                'url': videoUrl,
-                'title': title,
-                'platform': 'Youtube',
-                'content_type': 'video',
-                'capture_method': 'Platform_injection',
-                'author': author,
-                'author_link': authorLink,
-            }
+                url: videoUrl,
+                title: title,
+                platform: 'Youtube',
+                content_type: 'video',
+                capture_method: 'Platform_injection',
+                author: author,
+                author_link: authorLink,
+            };
 
+            chrome.runtime.sendMessage({
+                type: 'SAVE',
+                data: data
+            });
 
-            chrome.runtime.sendMessage({type: 'SAVE', data: data})
             console.log('capturedData', data);
-
-
-
-
-
 
             alert("Saved video!");
         });
