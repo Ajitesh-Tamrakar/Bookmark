@@ -1,10 +1,13 @@
 # Bookmark 🔖
 
-A self-hosted, open source browser extension that captures content from the web and lets you search across all of it using natural language — powered entirely by a local AI model running on your own machine.
+A self-hosted, open source browser extension that captures content from the
+web and lets you search across all of it using natural language — powered
+entirely by a local AI model running on your own machine.
 
 No cloud. No subscriptions. No data leaving your device.
 
-> **Prototype notice:** Currently only YouTube is supported. LinkedIn, Pinterest, Twitter/X, and general web capture are planned.
+> **Prototype notice:** Currently only YouTube is supported. LinkedIn,
+> Pinterest, Twitter/X, and general web capture are planned.
 
 ---
 
@@ -12,7 +15,8 @@ No cloud. No subscriptions. No data leaving your device.
 
 1. Click the Bookmark button on any YouTube video
 2. Bookmark extracts the transcript and runs it through a local AI model
-3. Weeks later, search in plain language — *"that video about negotiation"* — and it finds it, even if you remember nothing else about it
+3. Weeks later, search in plain language — *"that video about negotiation"*
+   — and it finds it, even if you remember nothing else about it
 
 Everything runs on your machine. Nothing is sent anywhere.
 
@@ -20,12 +24,11 @@ Everything runs on your machine. Nothing is sent anywhere.
 
 ## Requirements
 
-- macOS, Linux, or Windows (WSL2)
-- Python 3.10+
-- Node.js 18+
-- PostgreSQL 14+ with [pgvector](https://github.com/pgvector/pgvector#installation)
+- [Docker](https://docs.docker.com/get-docker/) — the only thing you need to install manually
 - 8 GB RAM minimum, 16 GB recommended
-- Ollama — installed automatically if not present
+- Google Chrome
+
+Python, Node.js, PostgreSQL, pgvector, and Ollama are all handled inside Docker automatically.
 
 ---
 
@@ -37,69 +40,110 @@ cd Bookmark
 bash install.sh
 ```
 
-The installer will:
-- Install all Python and Node dependencies (isolated, never touches system Python)
-- Set up the PostgreSQL database
-- Download the required Ollama models
-- Register Bookmark as a background service (auto-starts on reboot)
-- Register the `bookmark` CLI command
+The installer registers the `bookmark` CLI command on your system.
+That's all it does — Docker handles everything else.
 
-After install, open **http://localhost:8081** in Chrome to complete setup.
+Then start Bookmark:
+
+```bash
+bookmark start
+```
+
+On first run, Ollama downloads the required AI models in the background.
+This takes a few minutes depending on your connection. Watch progress:
+
+```bash
+bookmark logs ollama
+```
+
+Once running, open **http://localhost:8081** in Chrome.
 
 **Load the browser extension:**
 1. Open `chrome://extensions`
-2. Enable Developer mode (top-right toggle)
-3. Click Load unpacked
+2. Enable Developer mode (toggle, top-right corner)
+3. Click **Load unpacked**
 4. Select the `extension/dist/` folder inside the repo
 
 ---
 
 ## Usage
 
-After install, Bookmark runs automatically in the background on every boot.
-Open **http://localhost:8081** to use the app.
-
 **Service control:**
 ```bash
-bookmark start       # start Bookmark + Ollama
-bookmark stop        # stop both
-bookmark restart     # stop and restart both
-bookmark status      # live health check — server / Ollama / Postgres
+bookmark start       # start all services
+bookmark stop        # stop all services
+bookmark restart     # restart all services
+bookmark status      # show running containers
 ```
 
 **Logs:**
 ```bash
-bookmark logs        # last 50 lines
-bookmark logs 200    # last n lines
+bookmark logs                # tail all services
+bookmark logs ollama         # tail Ollama — useful on first run to watch model download
+bookmark logs backend        # tail Django API
+bookmark logs frontend       # tail React app
+bookmark logs 200            # tail last 200 lines across all services
 ```
 
 **Maintenance:**
 ```bash
-bookmark update      # git pull → install → migrate → rebuild → restart
-bookmark uninstall   # full clean removal, keeps your data
+bookmark update      # git pull → rebuild containers → restart
+bookmark uninstall   # full removal — containers, volumes, and all saved data
 ```
 
 ---
 
 ## Troubleshooting
 
-**`bookmark status` shows Postgres unreachable**
-PostgreSQL is not running. Start it with `sudo systemctl start postgresql` (Linux) or `brew services start postgresql` (macOS).
+**Permission denied on `docker compose`**
 
-**pgvector extension missing**
-Install pgvector for your PostgreSQL version: https://github.com/pgvector/pgvector#installation
+Your user is not in the docker group. Run:
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+Then try `bookmark start` again.
+
+**Models taking too long or search not working**
+
+`nomic-embed-text-v2-moe` and `gemma4:e2b` download in the background on
+first run. Search will not work until both are fully downloaded. Check:
+```bash
+bookmark logs ollama
+```
+
+**Port 8080 or 8081 already in use**
+
+Something else is using that port. Find and stop it:
+```bash
+sudo lsof -i :8080
+sudo lsof -i :8081
+```
+Then run `bookmark start` again.
 
 **Permission denied running install.sh**
+
 Use `bash install.sh` instead of `./install.sh`.
 
-**Ollama port 11434 already in use**
-Another Ollama instance is running. Stop it with `pkill ollama` and re-run `bookmark start`.
+**Docker is not running**
+
+Start Docker and try again:
+```bash
+# Linux
+sudo systemctl start docker
+
+# macOS / Windows
+# Open Docker Desktop from your applications
+```
 
 ---
 
 ## Data & Privacy
 
-Everything runs locally. Your saved content, search queries, and embeddings never leave your machine. The only outbound requests are to fetch content from the platform you are saving from — the same request your browser makes anyway.
+Everything runs locally. Your saved content, search queries, and embeddings
+never leave your machine. The only outbound requests are to fetch content
+from the platform you are saving from — the same request your browser makes
+anyway.
 
 Export your full library at any time from app settings as a single SQLite file.
 
@@ -115,4 +159,3 @@ Export your full library at any time from app settings as a single SQLite file.
 - [ ] Multi-device sync (end-to-end encrypted, opt-in)
 
 ---
-
