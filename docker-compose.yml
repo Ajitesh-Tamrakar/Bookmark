@@ -1,127 +1,88 @@
-# ── Bookmark — Docker Compose ─────────────────────────────────────────────────
-# Four services:
-#   db       — PostgreSQL 16 with pgvector
-#   ollama   — Local AI model server
-#   backend  — Django API on port 8080
-#   frontend — React app on port 8081
-#
-# Usage:
-#   Start:   docker compose up -d
-#   Stop:    docker compose down
-#   Logs:    docker compose logs -f
-#   Rebuild: docker compose up -d --build
-
 services:
 
-  # ── PostgreSQL + pgvector ────────────────────────────────────────────────────
-  # ankane/pgvector is the official Postgres image with pgvector pre-installed
-  # This is why we use this image instead of the plain postgres:16 image —
-  # pgvector requires compilation on plain Postgres which is painful to do
-  # inside Docker. This image ships with it already built.
   db:
     image: pgvector/pgvector:pg16
     container_name: bookmark-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: bookmark
-      POSTGRES_USER: bookmark
-      POSTGRES_PASSWORD: bookmark_local
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
-      # Named volume — your data persists across container restarts and rebuilds
-      # Without this, your entire database is wiped every time you run
-      # docker compose down
       - bookmark_db_data:/var/lib/postgresql/data
     ports:
-      # Expose to host so you can connect with a local psql client for debugging
-      # Remove this line if you don't want the DB accessible from the host
       - "5432:5432"
     healthcheck:
-      # Docker uses this to know when Postgres is actually ready
-      # Other services use depends_on: db: condition: service_healthy
-      # which waits for this check to pass before starting
-      test: ["CMD-SHELL", "pg_isready -U bookmark -d bookmark"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d bookmark" ]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # ── Ollama — Local AI Model Server ───────────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
     container_name: bookmark-ollama
     restart: unless-stopped
+
     volumes:
-      # Ollama stores downloaded models here
-      # Named volume means models survive container rebuilds —
-      # you don't re-download nomic-embed-text-v2-moe every time
       - bookmark_ollama_data:/root/.ollama
+
     ports:
-      # Expose so the host can run: ollama list, ollama ps etc.
-      - "11434:11434"
-    # Pull both fixed models on first startup
-    # The entrypoint runs ollama serve in the background, pulls models,
-    # then keeps serving. Models are cached in the volume after first pull.
-    entrypoint: ["/bin/sh", "-c"]
+      - "8082:11434"
+
+    entrypoint: [ "/bin/sh", "-c" ]
+
     command:
       - |
         ollama serve &
-        echo '[ollama] Waiting for server to start...'
+        echo "[ollama] Waiting for server to start..."
         sleep 5
-        echo '[ollama] Pulling nomic-embed-text-v2-moe (embedding model)...'
+
+        echo "[ollama] Pulling nomic-embed-text-v2-moe..."
         ollama pull nomic-embed-text-v2-moe
-        echo '[ollama] Pulling gemma4:e2b (generation model)...'
+
+        echo "[ollama] Pulling gemma4:e2b..."
         ollama pull gemma4:e2b
-        echo '[ollama] Models ready.'
+
+        echo "[ollama] Models ready."
         wait
+
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      test: [ "CMD", "ollama", "list" ]
       interval: 10s
       timeout: 10s
       retries: 20
       start_period: 30s
 
-  # ── Django Backend ───────────────────────────────────────────────────────────
   backend:
     build:
       context: .
       dockerfile: Dockerfile
+
     container_name: bookmark-backend
     restart: unless-stopped
+
     environment:
-      # Django
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-this-in-production}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,backend
 
-      # Database — uses the service name 'db' as the host
-      # Inside Docker's network, containers talk to each other by service name
-      # not by localhost — this is the most common Docker gotcha
       DB_NAME: bookmark
-      DB_USER: bookmark
-      DB_PASSWORD: bookmark_local
+      DB_USER: postgres
+      DB_PASSWORD: postgres
       DB_HOST: db
       DB_PORT: 5432
 
-      # Ollama — same idea, 'ollama' is the service name not localhost
       OLLAMA_BASE_URL: http://ollama:11434
 
-      # Fixed models — prototype, not configurable
       EMBEDDING_MODEL: nomic-embed-text-v2-moe
       GENERATION_MODEL: gemma4:e2b
 
-      # Ports
       BOOKMARK_SERVER_PORT: 8080
-
-      # Dev mode
       BOOKMARK_DEV_MODE: ${BOOKMARK_DEV_MODE:-False}
 
     volumes:
-      # Mount your local source code into the container
-      # This means edits to your Django code appear immediately —
-      # you don't need to rebuild the image on every code change
       - .:/app
-      # Keep logs on the host so you can read them outside Docker
       - ./logs:/app/logs
-      # Keep temp captures on the host for dev mode replay
       - ./tmp:/app/tmp
 
     ports:
@@ -133,32 +94,23 @@ services:
       ollama:
         condition: service_healthy
 
-  # ── React Frontend ───────────────────────────────────────────────────────────
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+
     container_name: bookmark-frontend
     restart: unless-stopped
+
     environment:
       PORT: 8081
-      # Tell React where the Django API is
-      # Create React App reads REACT_APP_ prefixed vars at build time
       REACT_APP_API_URL: http://localhost:8080
-      # Vite uses VITE_ prefix — include both to cover either setup
       VITE_API_URL: http://localhost:8080
-      # Disable browser auto-open inside Docker (it can't open a browser)
       BROWSER: none
-      # Allow connections from outside the container (required in Docker)
       HOST: 0.0.0.0
 
     volumes:
-      # Mount source for hot reload — file changes reflect without rebuild
       - ./frontend:/app
-      # Prevent host node_modules from overwriting container's node_modules
-      # This is a standard Docker pattern for Node projects —
-      # without it the container uses your host's node_modules which may
-      # have been built for a different OS
       - /app/node_modules
 
     ports:
@@ -167,12 +119,9 @@ services:
     depends_on:
       - backend
 
-# ── Named Volumes ─────────────────────────────────────────────────────────────
-# These are managed by Docker, not tied to any specific path on your host.
-# Data persists across: docker compose down, docker compose up, image rebuilds.
-# Data is removed only when you run: docker compose down -v
 volumes:
   bookmark_db_data:
     driver: local
+
   bookmark_ollama_data:
     driver: local

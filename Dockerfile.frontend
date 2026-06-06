@@ -1,21 +1,13 @@
-# ── Bookmark — React Frontend ─────────────────────────────────────────────────
-# Base image: official Node 20 slim
 FROM node:20-slim
 
 WORKDIR /app
 
-# Copy package files first for layer caching
-# node_modules layer only rebuilds when package.json changes
 COPY frontend/package*.json ./
 
 RUN npm install
 
-# Copy the rest of the frontend source
 COPY frontend/ .
 
-# Expose React dev server port
 EXPOSE 8081
 
-# Start React development server
-# PORT env var tells Create React App / Vite which port to use
-CMD ["sh", "-c", "PORT=8081 npm start"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8081"]

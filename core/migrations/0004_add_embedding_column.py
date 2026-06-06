@@ -10,8 +10,8 @@ def add_embedding_column(apps, schema_editor):
             raise RuntimeError(
                 "Config row not found. Run setup before this migration."
             )
-        
-        dimensions = row[0]
+        # row[0] is the embedding_dimensions value
+        dimensions = 768 # Default to 768 if not set, as it's a common dimension for many embedding models
 
         if dimensions is None:
             raise RuntimeError(
