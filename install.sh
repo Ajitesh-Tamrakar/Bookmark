@@ -61,7 +61,7 @@ success "bookmark CLI installed → /usr/local/bin/bookmark"
 info "Starting Bookmark (this pulls Docker images on first run, may take a few minutes)..."
 
 cd "$REPO_ROOT"
-docker compose up -d
+docker compose up --build #for development, should be replaced with -d when not debugging
 
 # ── Done ───────────────────────────────────────────────────────────────────────
 echo ""
