@@ -87,7 +87,7 @@ def capture(request):
 
             # author_link = data['author_link']
         
-        logger.info(f"Bookmark created for URL: {data['url']}")
+        logger.info(f"Bookmark created for URL: {data['source_url']}")
 
         try:
             project_root = Path(__file__).parent.parent
@@ -100,19 +100,43 @@ def capture(request):
             logger.error(f"Error connecting to database: {e}")
             return JsonResponse({'error': 'Database connection error'}, status=500)
         
-        conn.execute('''CREATE TABLE IF NOT EXISTS capture_log
-                     (url TEXT,
-                     title TEXT,
-                     platform TEXT,
-                     content_type TEXT,
-                     capture_method TEXT,
-                     author TEXT,
-                     author_link TEXT,
-                     note TEXT, 
-                     captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-        conn.execute('''INSERT INTO capture_log (source_url, title, platform, content_type, capture_method)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)''', (data['source_url'], data['title'], data['platform'], data['content_type'], data['capture_method']))
-        conn.commit()
+        try:
+            conn.execute('''CREATE TABLE IF NOT EXISTS capture_log
+                            (source_url TEXT,
+                            title TEXT,
+                            platform TEXT,
+                            content_type TEXT,
+                            capture_method TEXT,
+                            author TEXT,
+                            author_link TEXT,
+                            note TEXT, 
+                            captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+        except sqlite3.Error as e:
+            logger.error(f"Error creating capture_log table: {e}")
+            # return JsonResponse({'error': 'Database error'}, status=500)
+        # conn.execute('''CREATE TABLE IF NOT EXISTS capture_log
+        #              (source_url TEXT,
+        #              title TEXT,
+        #              platform TEXT,
+        #              content_type TEXT,
+        #              capture_method TEXT,
+        #              author TEXT,
+        #              author_link TEXT,
+        #              note TEXT, 
+        #              captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+
+        try:
+            conn.execute('''INSERT INTO capture_log (source_url, title, platform, content_type, capture_method, author, author_link, note)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', 
+                            (data['source_url'], data['title'], data['platform'], data['content_type'], data['capture_method'], data.get('author'), data.get('author_link'), data.get('note')))
+            conn.commit()
+            logger.info(f"Capture log inserted for URL: {data['source_url']}")
+        except sqlite3.Error as e:
+            logger.error(f"Error inserting into capture_log: {e}")
+            # return JsonResponse({'error': 'Database insert error'}, status=500)
+        # conn.execute('''INSERT INTO capture_log (source_url, title, platform, content_type, capture_method)
+        #              VALUES (?, ?, ?, ?, ?, ?, ?)''', (data['source_url'], data['title'], data['platform'], data['content_type'], data['capture_method']))
+        # conn.commit()
         logger.info(f"Capture log inserted for URL: {data['source_url']}")
 
         return JsonResponse({'message': 'Data captured successfully'}, status=200)
