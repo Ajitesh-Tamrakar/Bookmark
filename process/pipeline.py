@@ -140,7 +140,7 @@ def tagging(bookmark):
         for i, chunk in enumerate(chunk_texts):
             try:
                 tags = generate_tags_for_chunk(chunk)
-                logger.info(f'Generated tags for chunk {i} from {len(chunk_texts)} chunks form in  bookmark ID: {bookmark.id}, URL: {bookmark.url}, Tags: {tags}')
+                logger.info(f'Generated tags for chunk {i+1} from {len(chunk_texts)} chunks form in  bookmark ID: {bookmark.id}, URL: {bookmark.url}, Tags: {tags}')
                 for i, tag in enumerate(tags):
                     normalized_tag = normalize_tag(tag)
                     tags[i] = normalized_tag
@@ -202,43 +202,47 @@ def tagging(bookmark):
         logger.info(f'No tags generated for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
         return {'stage': 'tagging', 'status': 'success', 'error': 'no generated tags'}
 
-
+# TEST123
 def chunking(bookmark):
     bookmark.refresh_from_db()
-    logger.info(f'Starting chunking for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
+    logger.info(f'Starting chunking for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Platform: {bookmark.platform}')
     if bookmark.platform == 'Youtube':
         try:
             raw_text = json.loads(bookmark.raw_text)
+            if raw_text is None:
+                logger.error(f'Raw text is None for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
+                return {'stage': 'chunking', 'status': 'failed', 'error': 'raw_text is None'}
+            script = ''.join([line['text'] for line in raw_text])
         except Exception as e:
             logger.error(f'Error occurred while loading raw_text for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
             return {'stage': 'chunking', 'status': 'failed', 'error': f'Error loading raw_text: {str(e)}'}
 
-    if raw_text is None or bookmark.raw_text is None:
+    if bookmark.raw_text is None:
         logger.error(f'Raw text is None for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
         return {'stage': 'chunking', 'status': 'failed', 'error': 'raw_text is None'}
 
-    if bookmark.platform == 'Youtube':
-        logger.info(f'Using YouTube specific chunking for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
+    # if bookmark.platform == 'Youtube':
+    #     logger.info(f'Using YouTube specific chunking for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
         # need to implement group of 300-500 in improvement time
         # I'll make sure to convert data from raw_text is converted in python object
-        script = ''.join([line['text'] for line in raw_text])
-    else:
-        script = bookmark.raw_text
+        
+
+    script = bookmark.raw_text
 
 
-        tokenizer = AutoTokenizer.from_pretrained("google/gemma-4-E2B")
-        splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-                tokenizer=tokenizer,
-                chunk_size=1000,
-                chunk_overlap=150,
+    tokenizer = AutoTokenizer.from_pretrained("google/gemma-4-E2B")
+    splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
+            tokenizer=tokenizer,
+            chunk_size=1000,
+            chunk_overlap=150,
 
-            )
-        chunks = splitter.split_text(script)
+        )
+    chunks = splitter.split_text(script)
 
-        for chunk in chunks:
-                Chunk.objects.create(text=chunk, bookmark=bookmark, chunk_type='video', word_count=len(chunk))
+    for chunk in chunks:
+            Chunk.objects.create(text=chunk, bookmark=bookmark, chunk_type='video', word_count=len(chunk))
 
-        return {'stage': 'chunking', 'status': 'success', 'error': ''}
+    return {'stage': 'chunking', 'status': 'success', 'error': ''}
     # there no field in bookmark table which stores user notes or there is not functionality which help use to check user gave a note even if we directly store that chunk tabel
 
     # Implementing sentence based NTLK library chunking

@@ -23,6 +23,14 @@ services:
     container_name: bookmark-ollama
     restart: unless-stopped
 
+    deploy:
+      resources:
+        reservations:
+            devices:
+              - driver: nvidia
+                count: 1
+                capabilities: [gpu]
+
     volumes:
       - bookmark_ollama_data:/root/.ollama
 
@@ -60,6 +68,7 @@ services:
 
     container_name: bookmark-backend
     restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8080
 
     environment:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-this-in-production}
@@ -73,6 +82,7 @@ services:
       DB_PORT: 5432
 
       OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_HOST: http://ollama:11434
 
       EMBEDDING_MODEL: nomic-embed-text-v2-moe
       GENERATION_MODEL: gemma4:e2b
@@ -93,7 +103,42 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
 
+    container_name: bookmark-worker
+
+    restart: unless-stopped
+
+    command: python manage.py run_worker
+
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-this-in-production}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
+
+      DB_NAME: bookmark
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: db
+      DB_PORT: 5432
+
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_HOST: http://ollama:11434
+      EMBEDDING_MODEL: nomic-embed-text-v2-moe
+      GENERATION_MODEL: gemma4:e2b
+
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+      - ./tmp:/app/tmp
+
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
   frontend:
     build:
       context: .

@@ -15,5 +15,9 @@ print('[bookmark] Extensions ready.')
 echo "[bookmark] Running migrations..."
 python manage.py migrate --noinput
 
-echo "[bookmark] Starting Django on port 8080..."
-exec python manage.py runserver 0.0.0.0:8080
+
+echo "[bookmark] Starting command: $@"
+exec "$@"
+
+# echo "[bookmark] Starting Django on port 8080..."
+# exec python manage.py runserver 0.0.0.0:8080
