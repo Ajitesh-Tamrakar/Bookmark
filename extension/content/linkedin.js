@@ -218,21 +218,28 @@ function extractLinkedInPost(post) {
     }
 
     source_url = post_url;
-    return {
+    const mandatory_fields = {
+        source_url,
         platform: "linkedin",
-        capture_method: "platform_injection",
+        content_type,
+        capture_method: "platform_injection"
+    };
+
+    const platform_specific_data = {
         author_name,
         author_headline,
         author_profile_url,
         post_text,
         hashtags,
-        content_type,
         images,
         videos,
-        source_url,
         post_url_resolved: Boolean(resolvedUrl), // lets downstream code tell a confirmed permalink from a DOM guess
         external_links,
-        saved_at: new Date().toISOString()
+        saved_at: new Date().toISOString(),
+    };
+    return {
+        platform_specific_data,
+        mandatory_fields,
     };
 }
 

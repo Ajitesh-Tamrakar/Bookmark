@@ -58,9 +58,14 @@ function extractTweet(tweet) {
     const hasMedia = images.length > 0 || videos.length > 0;
 
     source_url = tweetUrl; // For backward compatibility with older backend expecting source_url
-    return {
-        tweetId,
+    const mandatory_fields = {
         source_url,
+        platform: "twitter",
+        content_type: { 'image': true, 'video': false, 'text': true },
+        capture_method: "platform_injection",
+    };
+    const platform_specific_data = {
+        tweetId,
         authorName,
         username,
         timestamp,
@@ -68,9 +73,11 @@ function extractTweet(tweet) {
         images,
         videos,
         hasMedia,
-        platform: "twitter",
-        content_type: {'image': true, 'video': false, 'text': true},
-        capture_method: "platform_injection",
+
+    };
+    return {
+        mandatory_fields,
+        platform_specific_data
     };
 }
 

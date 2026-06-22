@@ -82,14 +82,22 @@ function injectSaveButton() {
                 ? channel.href
                 : '';
 
-            const data = {
+            const mandatory_fields = {
                 source_url: videoUrl,
-                title: title,
                 platform: 'Youtube',
                 content_type: 'video',
                 capture_method: 'Platform_injection',
+            };
+
+            const platform_specific_data = {
+                title: title,
                 author: author,
                 author_link: authorLink,
+            };
+
+            const data = {
+                mandatory_fields,
+                platform_specific_data
             };
 
             chrome.runtime.sendMessage({

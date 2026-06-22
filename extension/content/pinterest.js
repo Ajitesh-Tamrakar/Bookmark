@@ -12,19 +12,31 @@ function extractPin(pin) {
     const link =
         pin.querySelector('a[href*="/pin/"]');
 
-    return {
-        pin_id: pin.dataset.testPinId || "",
+    const mandatory_fields = {
+        source_url: link?.href || "",
         platform: "pinterest",
-        capture_method: 'platform_injection',
         content_type: {
             'image': true,
             'video': false,
             'text': true,
         },
-        source_url: link?.href || "",
+        capture_method: 'platform_injection',
+    };
+
+    const platform_specific_data = {
+        pin_id: pin.dataset.testPinId || "",
         image_url: img?.src || "",
         image_srcset: img?.srcset || "",
         alt_text: img?.alt || ""
+    };
+
+    console.log("[PINTEREST-EXT] Extracted Pin Data", {
+        mandatory_fields,
+        platform_specific_data
+    });
+    return {        
+        mandatory_fields,
+        platform_specific_data
     };
 }
 
