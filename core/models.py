@@ -55,6 +55,7 @@ class Bookmark(models.Model):
     transcript_source = models.CharField(max_length=50, choices=TranscriptSource.choices, null=True, blank=True)
     saved_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)
+    platform_metadata = models.JSONField(null=True, blank=True)
 
     class Meta:
         db_table = 'bookmarks'
