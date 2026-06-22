@@ -44,8 +44,8 @@ def capture(request):
             try:
                 Bookmark.objects.create(
                     url = data['source_url'],
-                    author = data['author'], 
-                    raw_data = data['raw_data'],
+                    author = data['authorName'], 
+                    raw_text = data['tweetText'],
                     capture_method = data['capture_method'],
                     platform = data['platform'],
 
@@ -62,7 +62,7 @@ def capture(request):
                     content_type = data['content_type'],
                     capture_method = data['capture_method'],
                     raw_text = data['alt_text'],
-                    author = data['author_name'],
+                    # author = data['author_name'],
                     )
             except Exception as e:
                 logger.error(f"Error creating bookmark for Pinterest: {e}")
@@ -128,7 +128,7 @@ def capture(request):
         try:
             conn.execute('''INSERT INTO capture_log (source_url, title, platform, content_type, capture_method, author, author_link, note)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', 
-                            (data['source_url'], data['title'], data['platform'], data['content_type'], data['capture_method'], data.get('author'), data.get('author_link'), data.get('note')))
+                            (data['source_url'], data['platform'], data['content_type'], data['capture_method']))
             conn.commit()
             logger.info(f"Capture log inserted for URL: {data['source_url']}")
         except sqlite3.Error as e:
