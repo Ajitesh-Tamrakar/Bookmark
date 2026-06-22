@@ -65,6 +65,15 @@
         },
         {
             "matches": [
+                "https://www.linkedin.com/*"
+            ],
+            "js": [
+                "content/early.js"
+            ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
                 "https://*.linkedin.com/*"
             ],
             "js": [
@@ -73,6 +82,14 @@
         }
     ],
     "web_accessible_resources": [
+        {
+            "resources": [
+                "inject.js"
+            ],
+            "matches": [
+                "https://www.linkedin.com/*"
+            ]
+        },
         {
             "resources": [
                 "icons/*"

@@ -83,7 +83,7 @@ function injectSaveButton() {
                 : '';
 
             const data = {
-                url: videoUrl,
+                source_url: videoUrl,
                 title: title,
                 platform: 'Youtube',
                 content_type: 'video',

@@ -1,62 +1,163 @@
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+// ===========================
+// PLATFORM DETECTION
+// ===========================
 
+function detectPlatform(sender) {
+    const url = sender?.tab?.url || "";
+    if (url.includes("youtube.com"))   return "youtube";
+    if (url.includes("twitter.com") || url.includes("x.com")) return "twitter";
+    if (url.includes("linkedin.com"))  return "linkedin";
+    if (url.includes("pinterest.com")) return "pinterest";
+    return "web";
+}
+
+// ===========================
+// ENTRY POINT
+// ===========================
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Received message in background:", message);
 
-    if (message.type === 'SAVE') {
+    if (message.type !== "SAVE") return false;
 
-        const payload = message.data;
+    const platform = detectPlatform(sender);
+    console.log("Detected platform:", platform);
 
-        fetch('http://127.0.0.1:8080/capture/save/', {
+    // Kick off async work; return true so the channel stays open
+    handleSave(platform, message.data, sendResponse);
+    return true;
+});
 
-            method: 'POST',
+// ===========================
+// ROUTER
+// ===========================
 
-            headers: {
-                'Content-Type': 'application/json'
-            },
+async function handleSave(platform, payload, sendResponse) {
+    try {
+        switch (platform) {
+            case "youtube":
+                await handleYouTube(payload, sendResponse);
+                break;
+            case "twitter":
+                await handleGeneric(payload, sendResponse);
+                break;
+            case "linkedin":
+            case "pinterest":
+            case "web":
+            default:
+                await handleGeneric(payload, sendResponse);
+                break;
+        }
+    } catch (err) {
+        console.error("handleSave crashed:", err);
+        sendResponse({ status: "ERROR", error: err.message });
+    }
+}
 
-            body: JSON.stringify(payload)
+// ===========================
+// HANDLERS
+// ===========================
 
-        })
-        .then(async (response) => {
+async function handleYouTube(payload, sendResponse) {
+    // YouTube was already working — plain JSON POST, no media download
+    await postJSON("http://127.0.0.1:8080/capture/save/", payload, sendResponse);
+}
 
-            // Read backend response
-            const data = await response.json();
+async function handleTwitter(payload, sendResponse) {
+    // Download images the extension can reach (pbs.twimg.com — no auth needed).
+    // Videos are HLS streams; we pass tweetUrl and let the backend use yt-dlp.
+    const formData = new FormData();
+    formData.append("tweet_data", JSON.stringify(payload));
 
-            if (response.ok) {
+    if (payload.images?.length) {
+        console.group("Downloading tweet images");
 
-                console.log("Data sent successfully");
-                console.log("Server response:", data);
-
-                sendResponse({
-                    status: 'OK',
-                    data: data
-                });
-
+        for (let i = 0; i < payload.images.length; i++) {
+            const blob = await downloadMedia(payload.images[i]);
+            if (blob) {
+                formData.append("images", blob, `image_${i}.jpg`);
+                console.log(`image_${i}:`, blob.size, blob.type);
             } else {
-
-                console.error("Backend Error:");
-                console.error("Status:", response.status);
-                console.error("Response:", data);
-
-                sendResponse({
-                    status: 'ERROR',
-                    code: response.status,
-                    error: data
-                });
+                console.warn(`image_${i} download failed, skipping`);
             }
-        })
+        }
 
-        .catch((error) => {
+        console.groupEnd();
+    }
 
-            console.error("Fetch failed:", error);
+    await postFormData("http://127.0.0.1:8080/capture/save/", formData, sendResponse);
+}
 
-            sendResponse({
-                status: 'FETCH_ERROR',
-                error: error.message
-            });
+async function handleGeneric(payload, sendResponse) {
+    await postJSON("http://127.0.0.1:8080/capture/save/", payload, sendResponse);
+}
+
+// ===========================
+// FETCH HELPERS
+// ===========================
+
+async function postJSON(url, payload, sendResponse) {
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
         });
 
-        // IMPORTANT
-        return true;
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log("JSON POST success:", data);
+            sendResponse({ status: "OK", data });
+        } else {
+            console.error("Backend error:", response.status, data);
+            sendResponse({ status: "ERROR", code: response.status, error: data });
+        }
+    } catch (err) {
+        console.error("postJSON failed:", err);
+        sendResponse({ status: "FETCH_ERROR", error: err.message });
     }
-});
+}
+
+async function postFormData(url, formData, sendResponse) {
+    try {
+        // Do NOT set Content-Type manually — browser sets it with the boundary
+        const response = await fetch(url, {
+            method: "POST",
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log("FormData POST success:", data);
+            sendResponse({ status: "OK", data });
+        } else {
+            console.error("Backend error:", response.status, data);
+            sendResponse({ status: "ERROR", code: response.status, error: data });
+        }
+    } catch (err) {
+        console.error("postFormData failed:", err);
+        sendResponse({ status: "FETCH_ERROR", error: err.message });
+    }
+}
+
+// ===========================
+// MEDIA DOWNLOADER
+// ===========================
+
+async function downloadMedia(url) {
+    try {
+        console.log("Downloading:", url);
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        return await response.blob();
+    } catch (err) {
+        console.error("Download failed:", err);
+        return null;
+    }
+}
