@@ -11,13 +11,6 @@ class Bookmark(models.Model):
         TWITTER = 'twitter', 'Twitter/X'
         WEB = 'web', 'Web'
 
-    class ContentType(models.TextChoices):
-        VIDEO      = 'video',      'Video'
-        ARTICLE    = 'article',    'Article'
-        POST       = 'post',       'Post'
-        IMAGE_PAGE = 'image_page', 'Image Page'
-        WEB_PAGE   = 'web_page',   'Web Page'
-
     class Processing_Status(models.TextChoices):
         PENDING    = 'pending',    'Pending'
         PROCESSING = 'processing', 'Processing'
@@ -44,13 +37,15 @@ class Bookmark(models.Model):
     url = models.TextField(null=False)
     title = models.CharField(max_length=255, null=True, blank=True)
     platform = models.CharField(max_length=50, choices=Platform.choices)
-    content_type = models.CharField(max_length=50, choices= ContentType.choices )
+    has_text = models.BooleanField(default=False)
+    has_image = models.BooleanField(default=False)
+    has_video = models.BooleanField(default=False)
     processing_status = models.CharField(max_length=50, choices=Processing_Status.choices, default=Processing_Status.PENDING)
     processing_error = models.TextField(null=True, blank=True)
     retry_count = models.IntegerField(default=0)
-    failed_at = models.CharField(null=True, choices=Stages)
+    failed_at = models.CharField(max_length=20, null=True, choices=Stages)
     capture_method = models.CharField(max_length=50, choices=CaptureMethod.choices, null=True, blank=True)     
-    raw_text = models.TextField(null=True, blank=True)
+    raw_text = models.JSONField(null=True, blank=True)
     author = models.CharField(max_length=100, null=True, blank=True)
     transcript_source = models.CharField(max_length=50, choices=TranscriptSource.choices, null=True, blank=True)
     saved_at = models.DateTimeField(auto_now_add=True)
