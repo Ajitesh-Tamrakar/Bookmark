@@ -1,10 +1,12 @@
 import os
+
 import ollama
-from process.helper_function import update_raw_text_key
+
+from process.helper_function import cleanup_temp_file, temp_file_path, update_raw_text_key
+from process.media_download import download_image
 
 
 def analyze_image(image_path):
-    # Verify the file actually exists before sending it to the model
     if not os.path.exists(image_path):
         print(f"Error: The file at '{image_path}' was not found.")
         return
@@ -12,42 +14,62 @@ def analyze_image(image_path):
     print("Analyzing image... Please wait...")
 
     try:
-        # Call the local Ollama instance
         response = ollama.chat(
             model='gemma4:e2b',
             messages=[
                 {
                     'role': 'user',
                     'content': 'Analyze this image completely. Identify the main subject, any background elements, and describe what is happening.',
-                    # Pass the path to the image in the 'images' list
                     'images': [image_path]
                 }
             ]
         )
-
-        # Print the model's text response
-        # print("\n--- Model Description ---")
         return(response['message']['content'])
-        # print("-------------------------")
 
     except Exception as e:
         print(f"An error occurred: {e}")
         print("Make sure Ollama is running (`ollama serve`) and the model is pulled (`ollama pull gemma4:e2b`).")
 
 
+IMAGE_URL_RESOLVERS = {
+    'pinterest': lambda psd: psd.get('image_url'),
+    'twitter':   lambda psd: (psd.get('images') or [None])[0],
+    'linkedin':  lambda psd: (psd.get('images') or [None])[0],
+}
+
+
+def resolve_image_url(platform, platform_metadata):
+    resolver = IMAGE_URL_RESOLVERS.get(platform)
+    if resolver is None:
+        return None
+    return resolver(platform_metadata or {})
+
+
 def extract_image(bookmark):
+    image_url = resolve_image_url(bookmark.platform, bookmark.platform_metadata)
+    if not image_url:
+        return {'status': 'failed', 'error': f"no image URL found in platform_metadata for platform '{bookmark.platform}'"}
+
+    temp_path = temp_file_path(bookmark.id, 'image', 'jpg')
     try:
-        # TODO: Add VLM summary from captured image bytes when image processing is in scope.
-        update_raw_text_key(bookmark, "image", None)
+        result = download_image(image_url, temp_path)
+        if result['status'] == 'failed':
+            return {'status': 'failed', 'error': f"download failed: {result['error']}"}
+
+        description = analyze_image(temp_path)
+        if not description:
+            return {'status': 'failed', 'error': 'VLM returned no description'}
+
+        update_raw_text_key(bookmark, "image", description)
         return {'status': 'success', 'error': ''}
     except Exception as e:
         return {'status': 'failed', 'error': str(e)}
+    finally:
+        cleanup_temp_file(temp_path)
 
 
 IMAGE_LEAVES = {
     'pinterest': extract_image,
-    'twitter': extract_image,
-    'linkedin': extract_image,
+    'twitter':   extract_image,
+    'linkedin':  extract_image,
 }
-
-

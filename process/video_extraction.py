@@ -3,7 +3,9 @@ from urllib.parse import parse_qs, urlparse
 
 from youtube_transcript_api import YouTubeTranscriptApi
 
-from process.helper_function import update_raw_text_key
+from process.helper_function import cleanup_temp_file, temp_file_path, update_raw_text_key
+from process.media_download import download_audio_only, download_video
+from process.transcription import transcribe_to_segments
 
 logger = logging.getLogger(__name__)
 
@@ -36,28 +38,47 @@ def extract_video_youtube(bookmark):
         logger.error(
             f'Error occurred while fetching YouTube transcript for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
         logger.info(f'Falling back to Whisper for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
-        # fall back to whiper
 
+        temp_path = temp_file_path(bookmark.id, 'audio', 'mp3')
         try:
-            # Loading whipser
-            # give audio of video to whisper
-            update_raw_text_key(bookmark, "video", "wisper given text")
+            download_result = download_audio_only(url, temp_path)
+            if download_result['status'] == 'failed':
+                return {'status': 'failed', 'error': f"audio download failed: {download_result['error']}"}
+            segments = transcribe_to_segments(temp_path)
+            if not segments:
+                return {'status': 'failed', 'error': 'Whisper produced no segments'}
+            update_raw_text_key(bookmark, "video", segments)
             return {'status': 'success', 'error': ''}
-
-        except Exception as e:
-            # log reason whisper didn't worked
+        except Exception as whisper_e:
             logger.error(
-                f'Error occurred while fetching transcript using Whisper for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
-            return {'status': 'failed', 'error': str(e)}
+                f'Whisper fallback failed for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(whisper_e)}')
+            return {'status': 'failed', 'error': str(whisper_e)}
+        finally:
+            cleanup_temp_file(temp_path)
 
 
 def extract_video_twitter(bookmark):
+    temp_path = temp_file_path(bookmark.id, 'video', 'mp4')
     try:
-        # TODO: real yt-dlp call.
-        update_raw_text_key(bookmark, "video", None)
+        download_result = download_video(bookmark.url, temp_path)
+        if download_result['status'] == 'failed':
+            return {'status': 'failed', 'error': f"video download failed: {download_result['error']}"}
+
+        segments = transcribe_to_segments(temp_path)
+        if not segments:
+            # No detected speech — legitimate outcome, not a failure (Goal 6)
+            update_raw_text_key(bookmark, "video", None)
+            return {'status': 'success', 'error': ''}
+
+        flat_text = ' '.join(seg['text'] for seg in segments)
+        update_raw_text_key(bookmark, "video", flat_text)
         return {'status': 'success', 'error': ''}
     except Exception as e:
+        logger.error(
+            f'Error occurred while processing Twitter video for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
         return {'status': 'failed', 'error': str(e)}
+    finally:
+        cleanup_temp_file(temp_path)
 
 
 VIDEO_LEAVES = {

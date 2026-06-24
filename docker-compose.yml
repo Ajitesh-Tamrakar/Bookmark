@@ -133,6 +133,7 @@ services:
       - .:/app
       - ./logs:/app/logs
       - ./tmp:/app/tmp
+      - bookmark_whisper_cache:/root/.cache/huggingface
 
     depends_on:
       db:
@@ -169,4 +170,7 @@ volumes:
     driver: local
 
   bookmark_ollama_data:
+    driver: local
+
+  bookmark_whisper_cache:
     driver: local

@@ -1,14 +1,15 @@
 import json
-from ollama import chat
 import logging
+from ollama import chat
 
-schema = {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 5}
+logger = logging.getLogger(__name__)
+
+TAG_LIST_SCHEMA = {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 5}
 
 
-def generate_tags_for_chunk(chunk):
-
+def generate_tags_for_chunk(chunk, model):
     response = chat(
-        model="gemma4:e2b",
+        model=model,
         messages=[
             {
                 "role": "system",
@@ -35,18 +36,13 @@ Content:
 """,
             },
         ],
-        format=schema,
+        format=TAG_LIST_SCHEMA,
         options={"temperature": 0.2},
     )
-
-    tags = json.loads(response["message"]["content"])
-    return tags
+    return json.loads(response["message"]["content"])
 
 
-
-
-
-def generate_hierarchical_tags(compressed_semantic_representation):
+def generate_hierarchical_tags(compressed_semantic_representation, model):
     hierarchical_prompt = f"""
     Below is a collection of semantic tags extracted from
     different sections of a long document.
@@ -65,42 +61,17 @@ def generate_hierarchical_tags(compressed_semantic_representation):
     Chunk Tags:
     {compressed_semantic_representation}
     """
-
-    print("\n===================================")
-    print("GENERATING FINAL HIERARCHICAL TAGS")
-    print("===================================")
-
+    logger.info('Generating final hierarchical tags')
     final_response = chat(
-        model="gemma4:e2b",
-
+        model=model,
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "You generate high-level semantic concepts "
-                    "from lower-level semantic tags."
-                )
+                "content": "You generate high-level semantic concepts from lower-level semantic tags.",
             },
-
-            {
-                "role": "user",
-                "content": hierarchical_prompt
-            }
+            {"role": "user", "content": hierarchical_prompt},
         ],
-
-        format={
-            "type": "array",
-            "items": {
-                "type": "string"
-            },
-            "minItems": 2,
-            "maxItems": 5
-        },
-
-        options={
-            "temperature": 0.2
-        }
+        format=TAG_LIST_SCHEMA,
+        options={"temperature": 0.2},
     )
-
-    final_tags = json.loads(final_response["message"]["content"])
-    return final_tags
+    return json.loads(final_response["message"]["content"])

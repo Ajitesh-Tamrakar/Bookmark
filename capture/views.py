@@ -32,7 +32,7 @@ def _twitter_fields(psd):
     return {
         "has_text": bool(psd.get("tweetText")),
         "has_image": len(psd.get("images") or []) > 0,
-        "has_video": any(video.get("src") for video in videos),
+        "has_video": len(videos) > 0,
         "title": None,
         "author": psd.get("authorName"),
         "text_content": psd.get("tweetText"),
@@ -94,6 +94,11 @@ def _write_capture_log(mandatory_fields, bookmark, capture_method):
                             note TEXT,
                             captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"""
         )
+        # Migrate old schema: column was previously named 'url'
+        columns = [row[1] for row in conn.execute("PRAGMA table_info(capture_log)")]
+        if "url" in columns and "source_url" not in columns:
+            conn.execute("ALTER TABLE capture_log RENAME COLUMN url TO source_url")
+            conn.commit()
         conn.execute(
             """INSERT INTO capture_log (source_url, title, platform, content_type, capture_method, author, author_link, note)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",

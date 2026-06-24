@@ -21,7 +21,6 @@ jsonpatch==1.33
 jsonpointer==3.1.1
 langchain-core==1.4.0
 langchain-protocol==0.0.15
-langchain-text-splitters==1.1.2
 langsmith==0.8.5
 markdown-it-py==4.2.0
 mdurl==0.1.2
@@ -45,12 +44,13 @@ sqlparse==0.5.5
 tenacity==9.1.4
 tokenizers==0.22.2
 tqdm==4.67.3
-transformers==5.9.0
 typer==0.25.1
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 urllib3==2.7.0
 uuid_utils==0.16.0
 xxhash==3.7.0
+faster-whisper>=1.1.1
+yt-dlp>=2025.1.1
 youtube-transcript-api==1.2.4
 zstandard==0.25.0

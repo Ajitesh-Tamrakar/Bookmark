@@ -7,3 +7,4 @@ venv
 *.log
 temp/
 frontend/README.md
+tmp/

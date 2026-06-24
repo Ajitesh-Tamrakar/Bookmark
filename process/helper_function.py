@@ -1,5 +1,25 @@
+import os
 import re
-from core.models import Bookmark
+from pathlib import Path
+
+from core.models import Bookmark, Config
+
+TEMP_DIR = Path(__file__).resolve().parent.parent / "tmp" / "captures"
+
+
+def temp_file_path(bookmark_id, modality, ext):
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    return str(TEMP_DIR / f"{bookmark_id}_{modality}.{ext}")
+
+
+def cleanup_temp_file(path):
+    if Config.get().dev_mode:
+        return
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
 
 def normalize_tag(tag: str) -> str:
     """
