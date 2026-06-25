@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from core.registry import EMBEDDING_REGISTRY
 from django.views.decorators.csrf import csrf_exempt
 from django.core.management import call_command
+from core import pull_manager
 
 
 #Setup status — used by frontend root redirect; exempt from SetupRequiredMiddleware via /setup/ prefix
@@ -87,7 +88,34 @@ def setup_embedding(request):
     })   
 
 
-#Dev check 
+@csrf_exempt
+def pull_models(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    import json
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    models = body.get('models', [])
+    if not models:
+        return JsonResponse({'error': 'models list is required'}, status=400)
+
+    for model in models:
+        pull_manager.pull_model(model)
+
+    return JsonResponse({'status': 'pulling', 'models': models})
+
+
+@csrf_exempt
+def pull_status(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    return JsonResponse(pull_manager.get_status())
+
+
+#Dev check
 def dev_wipe(request):
     Config = Config.get()
     if not Config.dev_mode:

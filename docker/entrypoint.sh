@@ -5,10 +5,13 @@ echo "[bookmark] PostgreSQL is ready (guaranteed by compose healthcheck)."
 
 echo "[bookmark] Enabling PostgreSQL extensions..."
 python manage.py shell -c "
-from django.db import connection
-with connection.cursor() as cursor:
-    cursor.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto;')
-    cursor.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+from django.db import connection, transaction
+for ext in ['pgcrypto', 'vector']:
+    try:
+        with transaction.atomic():
+            connection.cursor().execute(f'CREATE EXTENSION IF NOT EXISTS {ext};')
+    except Exception:
+        pass
 print('[bookmark] Extensions ready.')
 "
 

@@ -37,10 +37,8 @@ function StatusIcon({ status }) {
   return <PendingIcon />;
 }
 
-const hasOllamaService = (rows) => rows.some((r) => r.id === 'service');
 
-export default function ReadinessSection({ checkRows, checkState, onRunCheck, onSimulateOffline }) {
-  const showOfflineBtn = hasOllamaService(checkRows);
+export default function ReadinessSection({ checkRows, checkState, onRunCheck }) {
   const hasError = checkRows.some((r) => r.status === 'error');
 
   return (
@@ -111,15 +109,6 @@ export default function ReadinessSection({ checkRows, checkState, onRunCheck, on
           {checkState === 'running' ? 'Checking…' : 're-run'}
         </button>
 
-        {showOfflineBtn && (
-          <button
-            type="button"
-            onClick={onSimulateOffline}
-            className="text-[12px] text-text-faint hover:text-text-muted transition-colors cursor-pointer"
-          >
-            simulate offline
-          </button>
-        )}
       </div>
     </div>
   );

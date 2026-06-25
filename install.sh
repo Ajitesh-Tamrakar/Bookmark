@@ -57,8 +57,8 @@ rm /tmp/bookmark-built
 
 success "bookmark CLI installed → /usr/local/bin/bookmark"
 
-# ── Step 3: Start everything ───────────────────────────────────────────────────
-info "Starting Bookmark (this pulls Docker images on first run, may take a few minutes)..."
+# ── Step 3: Build and start containers ────────────────────────────────────────
+info "Building and starting Bookmark (first run pulls Docker images, may take a few minutes)..."
 
 cd "$REPO_ROOT"
 
@@ -71,18 +71,41 @@ else
   info "No NVIDIA GPU detected — running on CPU"
 fi
 
-docker compose $COMPOSE_FILES up --build
+docker compose $COMPOSE_FILES up -d --build
+
+# ── Step 4: Wait for frontend to be ready ─────────────────────────────────────
+info "Waiting for services to be ready..."
+
+SPINNER='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+i=0
+until docker inspect --format='{{.State.Running}}' bookmark-frontend 2>/dev/null | grep -q true; do
+  printf "\r${CYAN}[bookmark]${RESET} Starting up... ${SPINNER:$((i % ${#SPINNER})):1}"
+  i=$((i + 1))
+  sleep 0.2
+done
+
+# Wait for the frontend port to actually accept connections
+until curl -s -o /dev/null http://localhost:8081; do
+  printf "\r${CYAN}[bookmark]${RESET} Almost ready... ${SPINNER:$((i % ${#SPINNER})):1}"
+  i=$((i + 1))
+  sleep 0.5
+done
+printf "\r\033[K"
+
+# ── Step 5: Open browser ───────────────────────────────────────────────────────
+if command -v xdg-open &>/dev/null; then
+  xdg-open http://localhost:8081 &>/dev/null &
+elif command -v open &>/dev/null; then
+  open http://localhost:8081
+fi
 
 # ── Done ───────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}${BOLD}  ✓ Bookmark is running!${RESET}"
 echo ""
-echo -e "  ${BOLD}App:${RESET}         http://localhost:8081"
-echo -e "  ${BOLD}Django API:${RESET}  http://localhost:8080"
+echo -e "  ${BOLD}App:${RESET}  http://localhost:8081"
 echo ""
-echo -e "  ${YELLOW}Note:${RESET} Ollama is downloading AI models in the background."
-echo -e "  Search won't work until both models are ready. Watch progress:"
-echo -e "  ${CYAN}bookmark logs ollama${RESET}"
+echo -e "  Complete the setup wizard in your browser to download AI models."
 echo ""
 echo -e "  ${BOLD}Load the Chrome extension:${RESET}"
 echo -e "  1. Open chrome://extensions"

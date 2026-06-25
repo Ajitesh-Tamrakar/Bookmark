@@ -29,22 +29,6 @@ services:
     ports:
       - "8082:11434"
 
-    entrypoint: [ "/bin/sh", "-c" ]
-
-    command:
-      - |
-        ollama serve &
-        echo "[ollama] Waiting for server to start..."
-        sleep 5
-
-        echo "[ollama] Pulling nomic-embed-text-v2-moe..."
-        ollama pull nomic-embed-text-v2-moe
-
-        echo "[ollama] Pulling gemma4:e2b..."
-        ollama pull gemma4:e2b
-
-        echo "[ollama] Models ready."
-        wait
 
     healthcheck:
       test: [ "CMD", "ollama", "list" ]

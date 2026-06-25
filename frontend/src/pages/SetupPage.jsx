@@ -226,83 +226,104 @@ export default function SetupPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Simulated readiness check  // TODO(backend): replace with real API call
+  // Readiness check — real API
   // ---------------------------------------------------------------------------
   function clearTimers() {
     timerRefs.current.forEach(clearTimeout);
     timerRefs.current = [];
   }
 
-  function runCheck(simulateOffline = false) {
+  const pollRef = useRef(null);
+
+  function stopPolling() {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }
+
+  async function runCheck() {
     clearTimers();
+    stopPolling();
+
     const rows = buildRows(embedProvider, embedModel, genProvider, genModel, whisper);
     setCheckRows(rows.map((r) => ({ ...r, status: 'pending' })));
     setCheckState('running');
 
-    rows.forEach((row, idx) => {
-      // stagger start slightly
-      const startDelay = idx * 120;
+    // Mark ollama service row as running immediately
+    setCheckRows((prev) =>
+      prev.map((r) => (r.kind === 'service' ? { ...r, status: 'running' } : r))
+    );
 
-      if (row.kind === 'service') {
-        const t1 = setTimeout(() => {
-          setCheckRows((prev) =>
-            prev.map((r) => (r.id === row.id ? { ...r, status: 'running' } : r))
-          );
-        }, startDelay);
-        timerRefs.current.push(t1);
+    // Collect which ollama models need pulling
+    const ollamaModels = rows
+      .filter((r) => r.kind === 'model' && r.id !== 'whisper')
+      .map((r) => r.label);
 
-        const t2 = setTimeout(() => {
-          const finalStatus = simulateOffline ? 'error' : 'ok';
-          setCheckRows((prev) =>
-            prev.map((r) => (r.id === row.id ? { ...r, status: finalStatus } : r))
-          );
-        }, startDelay + 650);
-        timerRefs.current.push(t2);
-      } else {
-        // model: show progress bar filling over ~1300ms
-        const t1 = setTimeout(() => {
-          setCheckRows((prev) =>
-            prev.map((r) => (r.id === row.id ? { ...r, status: 'progress', loaded: 0 } : r))
-          );
-        }, startDelay + 200);
-        timerRefs.current.push(t1);
+    if (ollamaModels.length === 0) {
+      // No local models needed (cloud providers only) — mark all ok immediately
+      setCheckRows((prev) => prev.map((r) => ({ ...r, status: 'ok', loaded: r.size })));
+      setCheckState('ok');
+      return;
+    }
 
-        const STEPS = 20;
-        const STEP_MS = 1300 / STEPS;
-        for (let step = 1; step <= STEPS; step++) {
-          const s = step;
-          const t = setTimeout(() => {
-            setCheckRows((prev) =>
-              prev.map((r) =>
-                r.id === row.id ? { ...r, loaded: (r.size * s) / STEPS } : r
-              )
-            );
-          }, startDelay + 200 + s * STEP_MS);
-          timerRefs.current.push(t);
+    // Kick off pulls
+    try {
+      await fetch('/setup/pull-models/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ models: ollamaModels }),
+      });
+    } catch {
+      setCheckState('error');
+      return;
+    }
+
+    // Mark service row ok, model rows as progress
+    setCheckRows((prev) =>
+      prev.map((r) => {
+        if (r.kind === 'service') return { ...r, status: 'ok' };
+        if (ollamaModels.includes(r.label)) return { ...r, status: 'progress', loaded: 0 };
+        return r;
+      })
+    );
+
+    // Poll pull status every second
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch('/setup/pull-status/');
+        const data = await res.json();
+
+        setCheckRows((prev) =>
+          prev.map((r) => {
+            if (!ollamaModels.includes(r.label)) return r;
+            const info = data[r.label];
+            if (!info) return r;
+            if (info.status === 'done') return { ...r, status: 'ok', loaded: r.size };
+            if (info.status === 'error') return { ...r, status: 'error' };
+            return { ...r, status: 'progress', loaded: Math.round((info.percent / 100) * r.size) };
+          })
+        );
+
+        // Check if all models finished
+        const allDone = ollamaModels.every(
+          (m) => data[m]?.status === 'done' || data[m]?.status === 'error'
+        );
+        const anyError = ollamaModels.some((m) => data[m]?.status === 'error');
+
+        if (allDone) {
+          stopPolling();
+          setCheckState(anyError ? 'error' : 'ok');
         }
-
-        const t2 = setTimeout(() => {
-          setCheckRows((prev) =>
-            prev.map((r) =>
-              r.id === row.id ? { ...r, status: 'ok', loaded: r.size } : r
-            )
-          );
-        }, startDelay + 200 + 1300 + 80);
-        timerRefs.current.push(t2);
+      } catch {
+        stopPolling();
+        setCheckState('error');
       }
-    });
-
-    // final state resolution
-    const maxDelay = rows.length * 120 + 1800;
-    const tFinal = setTimeout(() => {
-      setCheckState(simulateOffline ? 'error' : 'ok');
-    }, maxDelay);
-    timerRefs.current.push(tFinal);
+    }, 1000);
   }
 
-  function handleSimulateOffline() {
-    runCheck(true);
-  }
+  // Stop polling on unmount
+  useEffect(() => () => stopPolling(), []);
 
   // ---------------------------------------------------------------------------
   // Scroll-spy nav with IntersectionObserver
@@ -502,8 +523,7 @@ export default function SetupPage() {
                 <ReadinessSection
                   checkRows={checkRows}
                   checkState={checkState}
-                  onRunCheck={() => runCheck(false)}
-                  onSimulateOffline={handleSimulateOffline}
+                  onRunCheck={runCheck}
                 />
               </section>
 
