@@ -269,11 +269,12 @@ export default function SetupPage() {
 
     // Kick off pulls
     try {
-      await fetch('/setup/pull-models/', {
+      const res = await fetch('/setup/pull-models/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ models: ollamaModels }),
       });
+      if (!res.ok) throw new Error(`${res.status}`);
     } catch {
       setCheckState('error');
       return;

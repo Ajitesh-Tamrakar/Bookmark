@@ -127,7 +127,7 @@ services:
     environment:
       PORT: 8081
       REACT_APP_API_URL: http://localhost:8080
-      VITE_API_URL: http://localhost:8080
+      VITE_API_URL: http://backend:8080
       BROWSER: none
       HOST: 0.0.0.0
 
