@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Search from "./pages/Search"
 import SetupPage from "./pages/SetupPage"
 import RootRedirect from "./pages/RootRedirect"
+import PipelinePage from "./pages/PipelinePage"
 
 
 function App(){
@@ -11,6 +12,7 @@ function App(){
         <Route path="/" element={<RootRedirect />} />
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/pipeline" element={<PipelinePage />} />
       </Routes>
     </BrowserRouter>
   )

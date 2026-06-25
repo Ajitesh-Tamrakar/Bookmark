@@ -19,6 +19,8 @@
   --color-accent-warning-text: #e8c46b;
   --color-accent-success: #4ec77f;
   --color-accent-error: #f0605a;
+  --color-accent-info: #7aa2e3;
+  --color-accent-audio: #c79ae3;
 
   /* Animations */
   --animate-fade-up: fade-up 0.3s ease both;

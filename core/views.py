@@ -14,9 +14,9 @@ def setup_status(request):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     try:
         config = Config.get()
-        return JsonResponse({'setup_complete': config.setup_complete})
+        return JsonResponse({'setup_complete': config.setup_complete, 'dev_mode': config.dev_mode})
     except Config.DoesNotExist:
-        return JsonResponse({'setup_complete': False})
+        return JsonResponse({'setup_complete': False, 'dev_mode': False})
 
 
 @csrf_exempt
