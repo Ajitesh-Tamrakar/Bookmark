@@ -9,11 +9,11 @@ _lock = threading.Lock()
 OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
 
 WHISPER_MODEL_MAP = {
-    'tiny':   'openai/whisper-tiny',
-    'base':   'openai/whisper-base',
-    'small':  'openai/whisper-small',
-    'medium': 'openai/whisper-medium',
-    'large':  'openai/whisper-large-v3',
+    'tiny':   'Systran/faster-whisper-tiny',
+    'base':   'Systran/faster-whisper-base',
+    'small':  'Systran/faster-whisper-small',
+    'medium': 'Systran/faster-whisper-medium',
+    'large':  'Systran/faster-whisper-large-v3',
 }
 
 
