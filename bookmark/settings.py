@@ -21,12 +21,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-env  = environ.Env()
-environ.Env.read_env(os.path.join(BASE_DIR,'.env'))
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'), overwrite=False)
 
-SECRET_KEY = env('SECRET_KEY')
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool('DEBUG', default=False)
+SECRET_KEY = env('DJANGO_SECRET_KEY', default=env('SECRET_KEY', default='django-insecure-local-dev-only'))
+DEBUG = env.bool('DJANGO_DEBUG', default=env.bool('DEBUG', default=False))
 
 
 ALLOWED_HOSTS = []
@@ -95,11 +94,11 @@ WSGI_APPLICATION = 'bookmark.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME':env('NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT'),
+        'NAME': env('DB_NAME', default=env('NAME', default='bookmark')),
+        'USER': env('DB_USER', default='postgres'),
+        'PASSWORD': env('DB_PASSWORD', default=env('PASSWORD', default='postgres')),
+        'HOST': env('DB_HOST', default='localhost'),
+        'PORT': env('DB_PORT', default='5432'),
     }
 }
 
