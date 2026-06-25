@@ -5,7 +5,6 @@ export default function WorkerStatusBar({
   pollIntervalSec,
   onRefresh,
   onTogglePolling,
-  onRestart,
 }) {
   return (
     <div className="flex items-center justify-between gap-4 flex-wrap border border-[#1f1e24] bg-[#0c0b0e] rounded-xl px-[18px] py-[14px]">
@@ -64,13 +63,6 @@ export default function WorkerStatusBar({
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={onRestart}
-          className="border border-border-default text-text-faint font-mono text-[12px] px-3 py-[7px] rounded-[7px] bg-transparent cursor-pointer hover:border-accent-error/40 hover:text-accent-error transition-colors"
-        >
-          ⏳ simulate worker restart
-        </button>
       </div>
     </div>
   );

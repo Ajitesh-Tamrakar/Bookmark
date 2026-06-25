@@ -5,6 +5,10 @@ from core.registry import EMBEDDING_REGISTRY
 from django.views.decorators.csrf import csrf_exempt
 from django.core.management import call_command
 from core import pull_manager
+import json
+import os
+import re
+from pathlib import Path
 
 
 #Setup status — used by frontend root redirect; exempt from SetupRequiredMiddleware via /setup/ prefix
@@ -151,3 +155,97 @@ def set_dev_mode(request):
     enabled = request.POST.get('enabled') == 'true'
     Config.objects.filter(id=1).update(dev_mode = enabled)
     return JsonResponse({'dev_mode': enabled})
+
+
+TEMP_DIR = Path(__file__).resolve().parent.parent / "tmp" / "captures"
+_TEMP_FILE_RE = re.compile(r'^(.+)_([^_]+)\.(\w+)$')
+
+
+@csrf_exempt
+def pipeline_status(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        config = Config.get()
+        if not config.dev_mode:
+            return JsonResponse({'error': 'dev mode not enabled'}, status=403)
+    except Config.DoesNotExist:
+        return JsonResponse({'error': 'config not found'}, status=404)
+
+    def serialize(qs, fields):
+        rows = []
+        for b in qs:
+            row = {}
+            for f in fields:
+                val = getattr(b, f)
+                if hasattr(val, 'isoformat'):
+                    val = val.isoformat()
+                elif val is not None:
+                    val = str(val) if not isinstance(val, (int, float, bool)) else val
+                row[f] = val
+            rows.append(row)
+        return rows
+
+    processing = serialize(
+        Bookmark.objects.filter(processing_status='processing').order_by('saved_at'),
+        ['id', 'title', 'url', 'platform', 'retry_count', 'saved_at'],
+    )
+    pending = serialize(
+        Bookmark.objects.filter(processing_status='pending').order_by('saved_at'),
+        ['id', 'title', 'url', 'capture_method', 'saved_at'],
+    )
+    failed = serialize(
+        Bookmark.objects.filter(processing_status='failed').order_by('-saved_at'),
+        ['id', 'title', 'url', 'failed_at', 'processing_error', 'retry_count'],
+    )
+    complete_count = Bookmark.objects.filter(processing_status='complete').count()
+
+    # scan tmp/captures/ for orphaned files
+    temp_files = []
+    if TEMP_DIR.exists():
+        for fname in sorted(TEMP_DIR.iterdir()):
+            if not fname.is_file():
+                continue
+            m = _TEMP_FILE_RE.match(fname.name)
+            if not m:
+                continue
+            bid, ftype, ext = m.group(1), m.group(2), m.group(3)
+            size_bytes = fname.stat().st_size
+            if size_bytes >= 1_048_576:
+                size_str = f'{size_bytes / 1_048_576:.0f} MB'
+            else:
+                size_str = f'{size_bytes / 1024:.0f} KB'
+            temp_files.append({'bid': bid, 'type': ftype, 'ext': ext, 'size': size_str})
+
+    return JsonResponse({
+        'processing': processing,
+        'pending': pending,
+        'failed': failed,
+        'complete_count': complete_count,
+        'temp_files': temp_files,
+    })
+
+
+@csrf_exempt
+def pipeline_retry(request, bookmark_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        config = Config.get()
+        if not config.dev_mode:
+            return JsonResponse({'error': 'dev mode not enabled'}, status=403)
+    except Config.DoesNotExist:
+        return JsonResponse({'error': 'config not found'}, status=404)
+
+    updated = Bookmark.objects.filter(id=bookmark_id, processing_status='failed').update(
+        processing_status='pending',
+        retry_count=0,
+        failed_at=None,
+        processing_error=None,
+    )
+    if not updated:
+        return JsonResponse({'error': 'bookmark not found or not in failed state'}, status=404)
+
+    return JsonResponse({'status': 'queued'})

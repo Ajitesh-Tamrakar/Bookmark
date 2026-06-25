@@ -7,4 +7,6 @@ urlpatterns = [
     path('setup/pull-models/', views.pull_models),
     path('setup/pull-status/', views.pull_status),
     path('setup/', views.setup_embedding),
+    path('pipeline/status/', views.pipeline_status),
+    path('pipeline/retry/<uuid:bookmark_id>/', views.pipeline_retry),
 ]

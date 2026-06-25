@@ -9,10 +9,7 @@ import PendingTable from '../components/pipeline/PendingTable';
 import FailedTable from '../components/pipeline/FailedTable';
 import TempFolderSection from '../components/pipeline/TempFolderSection';
 
-import { seedPipelineRows, advancePipelineRows } from '../mock/pipelineMockData';
-
 const POLL_INTERVAL_SEC = 3;
-const CONCURRENCY = 3;
 const STALE_THRESHOLD_SEC = 90;
 
 const NAV_ITEMS = [
@@ -48,9 +45,7 @@ function useDevModeGuard() {
   useEffect(() => {
     fetch('/setup/status/')
       .then((res) => res.json())
-      .then((data) => {
-        setStatus(data.dev_mode ? 'allowed' : 'denied');
-      })
+      .then((data) => setStatus(data.dev_mode ? 'allowed' : 'denied'))
       .catch(() => setStatus('denied'));
   }, []);
 
@@ -63,48 +58,47 @@ function useDevModeGuard() {
 export default function PipelinePage() {
   const devGuard = useDevModeGuard();
 
-  const seed = seedPipelineRows();
-  const [rows, setRows] = useState(seed.rows);
-  const [completeCount, setCompleteCount] = useState(seed.completeCount);
-  const [tempFiles] = useState(seed.tempFiles);
-  const [incomingIdx, setIncomingIdx] = useState(seed.incomingIdx);
-
+  const [data, setData] = useState(null);
   const [clock, setClock] = useState(Date.now());
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [polling, setPolling] = useState(true);
   const [activeSection, setActiveSection] = useState('summary');
 
   const pollRef = useRef(null);
-  const clockRef = useRef(null);
+
+  const fetchStatus = async () => {
+    try {
+      const res = await fetch('/pipeline/status/');
+      if (!res.ok) return;
+      const json = await res.json();
+      setData(json);
+      setLastRefresh(Date.now());
+    } catch {
+      // network error — keep stale data, don't crash
+    }
+  };
 
   // 1-second clock tick (independent of polling)
   useEffect(() => {
-    clockRef.current = setInterval(() => setClock(Date.now()), 1000);
-    return () => clearInterval(clockRef.current);
+    const iv = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(iv);
   }, []);
 
-  // poll tick
-  const runPoll = () => {
-    setRows((prevRows) => {
-      const prevComplete = completeCount;
-      const result = advancePipelineRows(prevRows, prevComplete, incomingIdx, CONCURRENCY);
-      setCompleteCount(result.completeCount);
-      setIncomingIdx(result.incomingIdx);
-      setLastRefresh(Date.now());
-      return result.rows;
-    });
-  };
+  // initial fetch + poll
+  useEffect(() => {
+    if (devGuard !== 'allowed') return;
+    fetchStatus();
+  }, [devGuard]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (devGuard !== 'allowed') return;
     if (polling) {
-      pollRef.current = setInterval(runPoll, POLL_INTERVAL_SEC * 1000);
+      pollRef.current = setInterval(fetchStatus, POLL_INTERVAL_SEC * 1000);
     }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, [polling]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [polling, devGuard]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // scroll-spy nav (same IntersectionObserver pattern as SetupPage)
+  // scroll-spy nav
   useEffect(() => {
     const observers = [];
     NAV_ITEMS.forEach(({ id }) => {
@@ -120,69 +114,23 @@ export default function PipelinePage() {
     return () => observers.forEach((obs) => obs.disconnect());
   }, []);
 
-  // handlers
-  const handleRefresh = () => runPoll();
+  const handleRefresh = () => fetchStatus();
 
-  const handleTogglePolling = () => {
-    setPolling((prev) => !prev);
+  const handleTogglePolling = () => setPolling((prev) => !prev);
+
+  const handleRetry = async (id) => {
+    try {
+      await fetch(`/pipeline/retry/${id}/`, { method: 'POST' });
+      fetchStatus();
+    } catch {
+      // best-effort
+    }
   };
-
-  // TODO(backend): replace with real restart endpoint call
-  const handleRestart = () => {
-    const now = Date.now();
-    setRows((prev) =>
-      prev.map((r) =>
-        r.processing_status === 'processing'
-          ? { ...r, processing_status: 'pending', current_step: null, processing_started_at: null, saved_at: r.saved_at || now }
-          : r
-      )
-    );
-    setLastRefresh(now);
-  };
-
-  // TODO(backend): replace with real retry endpoint call
-  const handleRetry = (id) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? { ...r, processing_status: 'pending', retry_count: 0, failed_at: null, processing_error: null, current_step: null, saved_at: Date.now() }
-          : r
-      )
-    );
-  };
-
-  // ---------------------------------------------------------------------------
-  // Derived data
-  // ---------------------------------------------------------------------------
-  const procRows = rows.filter((r) => r.processing_status === 'processing');
-  const pendRows = rows.filter((r) => r.processing_status === 'pending').sort((a, b) => a.saved_at - b.saved_at);
-  const failRows = rows.filter((r) => r.processing_status === 'failed');
-
-  const summary = [
-    { label: 'Pending', value: pendRows.length, dotKey: 'p', isError: false },
-    { label: 'Processing', value: procRows.length, dotKey: 'pr', isError: false },
-    { label: 'Complete', value: completeCount.toLocaleString(), dotKey: 'c', isError: false },
-    { label: 'Failed', value: failRows.length, dotKey: 'f', isError: failRows.length > 0 },
-  ];
-
-  const inflightRows = procRows
-    .slice()
-    .sort((a, b) => a.processing_started_at - b.processing_started_at)
-    .map((r) => ({
-      ...r,
-      stale: (clock - r.processing_started_at) > STALE_THRESHOLD_SEC * 1000,
-      elapsed: fmtElapsed(clock - r.processing_started_at),
-    }));
-
-  const pendingRows = pendRows.map((r) => ({
-    ...r,
-    savedAgo: fmtAgo(clock - r.saved_at),
-  }));
 
   // ---------------------------------------------------------------------------
   // Guard states
   // ---------------------------------------------------------------------------
-  if (devGuard === 'loading') {
+  if (devGuard === 'loading' || (devGuard === 'allowed' && !data)) {
     return (
       <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="w-5 h-5 rounded-full border-2 border-border-strong border-t-text-primary animate-spin" />
@@ -193,6 +141,27 @@ export default function PipelinePage() {
   if (devGuard === 'denied') {
     return <Navigate to="/" replace />;
   }
+
+  // ---------------------------------------------------------------------------
+  // Derived data
+  // ---------------------------------------------------------------------------
+  const procRows = data.processing.map((r) => ({
+    ...r,
+    stale: (clock - new Date(r.saved_at).getTime()) > STALE_THRESHOLD_SEC * 1000,
+    elapsed: fmtElapsed(clock - new Date(r.saved_at).getTime()),
+  }));
+
+  const pendingRows = data.pending.map((r) => ({
+    ...r,
+    savedAgo: fmtAgo(clock - new Date(r.saved_at).getTime()),
+  }));
+
+  const summary = [
+    { label: 'Pending', value: data.pending.length, dotKey: 'p', isError: false },
+    { label: 'Processing', value: data.processing.length, dotKey: 'pr', isError: false },
+    { label: 'Complete', value: data.complete_count.toLocaleString(), dotKey: 'c', isError: false },
+    { label: 'Failed', value: data.failed.length, dotKey: 'f', isError: data.failed.length > 0 },
+  ];
 
   // ---------------------------------------------------------------------------
   // Render
@@ -235,22 +204,21 @@ export default function PipelinePage() {
             <WorkerStatusBar
               polling={polling}
               lastRefreshText={fmtAgo(clock - lastRefresh)}
-              concurrency={CONCURRENCY}
+              concurrency={1}
               pollIntervalSec={POLL_INTERVAL_SEC}
               onRefresh={handleRefresh}
               onTogglePolling={handleTogglePolling}
-              onRestart={handleRestart}
             />
 
             <SummarySection summary={summary} />
 
-            <InFlightTable rows={inflightRows} count={procRows.length} />
+            <InFlightTable rows={procRows} count={data.processing.length} />
 
-            <PendingTable rows={pendingRows} count={pendRows.length} />
+            <PendingTable rows={pendingRows} count={data.pending.length} />
 
-            <FailedTable rows={failRows} count={failRows.length} onRetry={handleRetry} />
+            <FailedTable rows={data.failed} count={data.failed.length} onRetry={handleRetry} />
 
-            <TempFolderSection files={tempFiles} />
+            <TempFolderSection files={data.temp_files} />
           </div>
         </div>
       </div>
