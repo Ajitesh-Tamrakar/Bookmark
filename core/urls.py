@@ -9,4 +9,5 @@ urlpatterns = [
     path('setup/', views.setup_embedding),
     path('pipeline/status/', views.pipeline_status),
     path('pipeline/retry/<uuid:bookmark_id>/', views.pipeline_retry),
+    path('setup/set-dev-mode/', views.set_dev_mode),
 ]

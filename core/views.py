@@ -3,7 +3,6 @@ from .models import Config, Bookmark, BookmarkTag, Tag, Chunk
 from django.http import JsonResponse
 from core.registry import EMBEDDING_REGISTRY
 from django.views.decorators.csrf import csrf_exempt
-from django.core.management import call_command
 from core import pull_manager
 import json
 import os
@@ -55,30 +54,19 @@ def setup_embedding(request):
 
     embedding_dimension = EMBEDDING_REGISTRY[embedding_provider][embedding_model]
 
-    Config.objects.filter(id=1).update(
-        embedding_provider=embedding_provider,
-        embedding_model_name=embedding_model,
-        embedding_dimensions=embedding_dimension,
-        generation_provider=generation_provider,
-        generation_model_name=generation_model,
-        whisper_model_name=whisper_model,
-        dev_mode=bool(dev_mode),
-        setup_complete=True,
+    Config.objects.update_or_create(
+        id=1,
+        defaults=dict(
+            embedding_provider=embedding_provider,
+            embedding_model_name=embedding_model,
+            embedding_dimensions=embedding_dimension,
+            generation_provider=generation_provider,
+            generation_model_name=generation_model,
+            whisper_model_name=whisper_model,
+            dev_mode=bool(dev_mode),
+            setup_complete=True,
+        ),
     )
-
-    try:
-        call_command('migrate', 'core', '0004')
-    except Exception as e:
-        Config.objects.filter(id=1).update(
-            setup_complete=False,
-            embedding_provider=None,
-            embedding_dimensions=None,
-            embedding_model_name=None,
-            generation_provider=None,
-            generation_model_name=None,
-            whisper_model_name=None,
-        )
-        return JsonResponse({'error': f'Migration failed: {str(e)}'}, status=500)
 
     return JsonResponse({
         'status': 'Setup complete',
@@ -126,8 +114,8 @@ def pull_status(request):
 
 #Dev check
 def dev_wipe(request):
-    Config = Config.get()
-    if not Config.dev_mode:
+    config = Config.get()
+    if not config.dev_mode:
         return JsonResponse({'error': 'dev mode is not enabled'}, status = 403)
     
     #Wipe data
@@ -151,9 +139,10 @@ def dev_wipe(request):
 
     return JsonResponse({'status': 'Wiped'})
 
+@csrf_exempt
 def set_dev_mode(request):
     enabled = request.POST.get('enabled') == 'true'
-    Config.objects.filter(id=1).update(dev_mode = enabled)
+    Config.objects.filter(id=1).update(dev_mode=enabled)
     return JsonResponse({'dev_mode': enabled})
 
 
