@@ -8,6 +8,49 @@ _lock = threading.Lock()
 
 OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
 
+WHISPER_MODEL_MAP = {
+    'tiny':   'openai/whisper-tiny',
+    'base':   'openai/whisper-base',
+    'small':  'openai/whisper-small',
+    'medium': 'openai/whisper-medium',
+    'large':  'openai/whisper-large-v3',
+}
+
+
+def pull_whisper(whisper_size):
+    key = f'whisper-{whisper_size}'
+    with _lock:
+        if _pull_status.get(key, {}).get('status') == 'pulling':
+            return
+        _pull_status[key] = {'status': 'pulling', 'percent': 0}
+
+    thread = threading.Thread(target=_whisper_worker, args=(whisper_size,), daemon=True)
+    thread.start()
+
+
+def _whisper_worker(whisper_size):
+    key = f'whisper-{whisper_size}'
+    repo_id = WHISPER_MODEL_MAP.get(whisper_size, f'openai/whisper-{whisper_size}')
+    try:
+        from huggingface_hub import HfApi, hf_hub_download
+
+        api = HfApi()
+        files = [f.rfilename for f in api.model_info(repo_id).siblings or []]
+        total = len(files) or 1
+
+        for i, filename in enumerate(files):
+            hf_hub_download(repo_id=repo_id, filename=filename)
+            percent = int((i + 1) / total * 100)
+            with _lock:
+                _pull_status[key] = {'status': 'pulling', 'percent': percent}
+
+        with _lock:
+            _pull_status[key] = {'status': 'done', 'percent': 100}
+
+    except Exception as e:
+        with _lock:
+            _pull_status[key] = {'status': 'error', 'percent': 0, 'error': str(e)}
+
 
 def get_status():
     with _lock:

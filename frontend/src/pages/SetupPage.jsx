@@ -267,12 +267,16 @@ export default function SetupPage() {
       return;
     }
 
+    // All keys to track: ollama model labels + whisper key
+    const whisperKey = `whisper-${whisper}`;
+    const allKeys = [...ollamaModels, whisperKey];
+
     // Kick off pulls
     try {
       const res = await fetch('/setup/pull-models/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ models: ollamaModels }),
+        body: JSON.stringify({ models: ollamaModels, whisper }),
       });
       if (!res.ok) throw new Error(`${res.status}`);
     } catch {
@@ -280,11 +284,12 @@ export default function SetupPage() {
       return;
     }
 
-    // Mark service row ok, model rows as progress
+    // Mark service row ok, all model rows as progress
     setCheckRows((prev) =>
       prev.map((r) => {
         if (r.kind === 'service') return { ...r, status: 'ok' };
         if (ollamaModels.includes(r.label)) return { ...r, status: 'progress', loaded: 0 };
+        if (r.id === 'whisper') return { ...r, status: 'progress', loaded: 0 };
         return r;
       })
     );
@@ -297,8 +302,9 @@ export default function SetupPage() {
 
         setCheckRows((prev) =>
           prev.map((r) => {
-            if (!ollamaModels.includes(r.label)) return r;
-            const info = data[r.label];
+            const key = r.id === 'whisper' ? whisperKey : r.label;
+            if (!allKeys.includes(key)) return r;
+            const info = data[key];
             if (!info) return r;
             if (info.status === 'done') return { ...r, status: 'ok', loaded: r.size };
             if (info.status === 'error') return { ...r, status: 'error' };
@@ -306,11 +312,10 @@ export default function SetupPage() {
           })
         );
 
-        // Check if all models finished
-        const allDone = ollamaModels.every(
-          (m) => data[m]?.status === 'done' || data[m]?.status === 'error'
+        const allDone = allKeys.every(
+          (k) => data[k]?.status === 'done' || data[k]?.status === 'error'
         );
-        const anyError = ollamaModels.some((m) => data[m]?.status === 'error');
+        const anyError = allKeys.some((k) => data[k]?.status === 'error');
 
         if (allDone) {
           stopPolling();

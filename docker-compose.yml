@@ -70,6 +70,7 @@ services:
       - .:/app
       - ./logs:/app/logs
       - ./tmp:/app/tmp
+      - bookmark_whisper_cache:/root/.cache/huggingface
 
     ports:
       - "8080:8080"

@@ -99,13 +99,18 @@ def pull_models(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
     models = body.get('models', [])
-    if not models:
-        return JsonResponse({'error': 'models list is required'}, status=400)
+    whisper = body.get('whisper')
+
+    if not models and not whisper:
+        return JsonResponse({'error': 'models or whisper is required'}, status=400)
 
     for model in models:
         pull_manager.pull_model(model)
 
-    return JsonResponse({'status': 'pulling', 'models': models})
+    if whisper:
+        pull_manager.pull_whisper(whisper)
+
+    return JsonResponse({'status': 'pulling', 'models': models, 'whisper': whisper})
 
 
 @csrf_exempt
