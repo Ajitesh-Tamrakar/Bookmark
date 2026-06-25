@@ -1,5 +1,38 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Geist', -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  /* Setup page dark tokens */
+  --color-bg-base: #0a0a0b;
+  --color-bg-raised: #121116;
+  --color-bg-sunken: #161519;
+  --color-border-subtle: #1c1b21;
+  --color-border-default: #232228;
+  --color-border-strong: #3a3842;
+  --color-text-primary: #ededee;
+  --color-text-secondary: #c9c7d0;
+  --color-text-muted: #9a98a3;
+  --color-text-faint: #66646e;
+  --color-accent-warning: #d9a72e;
+  --color-accent-warning-text: #e8c46b;
+  --color-accent-success: #4ec77f;
+  --color-accent-error: #f0605a;
+
+  /* Animations */
+  --animate-fade-up: fade-up 0.3s ease both;
+  --animate-spin: spin 0.7s linear infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+}
+
 
 
 

@@ -1,8 +1,9 @@
 EMBEDDING_REGISTRY = {
     'ollama': {
-        'nomic-embed-text':  768,
-        'mxbai-embed-large': 1024,
-        'all-minilm':        384,
+        'nomic-embed-text-v2-moe': 768,
+        'nomic-embed-text':        768,
+        'mxbai-embed-large':       1024,
+        'all-minilm':              384,
     },
     'openai': {
         'text-embedding-3-small': 1536,

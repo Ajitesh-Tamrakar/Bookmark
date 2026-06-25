@@ -30,6 +30,7 @@ class SetupRequiredMiddleware:
                 )
         except Config.DoesNotExist:
             return JsonResponse(
-                {'error': 'Config not found. Run migrations first.'}
+                {'error': 'Config not found. Run migrations first.'},
+                status=503
             )
         return self.get_response(request)

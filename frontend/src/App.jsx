@@ -1,13 +1,17 @@
-import {BrowserRouter, Routes, Route } from "react-router-dom"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Search from "./pages/Search"
+import SetupPage from "./pages/SetupPage"
+import RootRedirect from "./pages/RootRedirect"
 
 
 function App(){
   return (
     <BrowserRouter>
-    <Routes>
-      <Route path = "/search" element={<Search />} />
-    </Routes>
+      <Routes>
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/setup" element={<SetupPage />} />
+        <Route path="/search" element={<Search />} />
+      </Routes>
     </BrowserRouter>
   )
 }
