@@ -61,7 +61,17 @@ success "bookmark CLI installed → /usr/local/bin/bookmark"
 info "Starting Bookmark (this pulls Docker images on first run, may take a few minutes)..."
 
 cd "$REPO_ROOT"
-docker compose up --build #for development, should be replaced with -d when not debugging
+
+# Auto-detect NVIDIA GPU; fall back to CPU if unavailable
+COMPOSE_FILES="-f docker-compose.yml"
+if command -v nvidia-smi &>/dev/null && nvidia-smi &>/dev/null 2>&1; then
+  info "NVIDIA GPU detected — enabling GPU acceleration"
+  COMPOSE_FILES="-f docker-compose.yml -f docker-compose.gpu.yml"
+else
+  info "No NVIDIA GPU detected — running on CPU"
+fi
+
+docker compose $COMPOSE_FILES up --build
 
 # ── Done ───────────────────────────────────────────────────────────────────────
 echo ""

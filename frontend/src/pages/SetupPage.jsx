@@ -61,22 +61,22 @@ const DEF = {
 
 // Approximate download sizes in MB
 const MODEL_SIZES = {
-  'nomic-embed-text-v2-moe': 957,
-  'mxbai-embed-large': 670,
-  'all-minilm': 45,
-  'text-embedding-3-small': 0,
-  'text-embedding-3-large': 0,
-  'text-embedding-004': 0,
+  'nomic-embed-text-v2-moe': 768,
+  // 'mxbai-embed-large': 670,
+  // 'all-minilm': 45,
+  // 'text-embedding-3-small': 0,
+  // 'text-embedding-3-large': 0,
+  // 'text-embedding-004': 0,
   'gemma4:e2b': 7200,
-  'llama3.2:3b': 2000,
-  'qwen2.5:7b': 4700,
-  'mistral:7b': 4100,
-  'gpt-4o-mini': 0,
-  'gpt-4o': 0,
-  'claude-haiku-4': 0,
-  'claude-sonnet-4': 0,
-  'gemini-2.0-flash': 0,
-  'gemini-1.5-pro': 0,
+  // 'llama3.2:3b': 2000,
+  // 'qwen2.5:7b': 4700,
+  // 'mistral:7b': 4100,
+  // 'gpt-4o-mini': 0,
+  // 'gpt-4o': 0,
+  // 'claude-haiku-4': 0,
+  // 'claude-sonnet-4': 0,
+  // 'gemini-2.0-flash': 0,
+  // 'gemini-1.5-pro': 0,
 };
 
 const WHISPER_SIZES = { tiny: 39, base: 74, small: 244, medium: 769, large: 1536 };
@@ -149,8 +149,8 @@ export default function SetupPage() {
     // reset to first model for that provider
     const firstModels = {
       ollama: 'nomic-embed-text-v2-moe',
-      openai: 'text-embedding-3-small',
-      google: 'text-embedding-004',
+      // openai: 'text-embedding-3-small',
+      // google: 'text-embedding-004',
     };
     setEmbedModel(firstModels[val] || '');
     scheduleCheck();

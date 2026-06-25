@@ -23,14 +23,6 @@ services:
     container_name: bookmark-ollama
     restart: unless-stopped
 
-    deploy:
-      resources:
-        reservations:
-            devices:
-              - driver: nvidia
-                count: 1
-                capabilities: [gpu]
-
     volumes:
       - bookmark_ollama_data:/root/.ollama
 
