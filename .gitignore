@@ -7,4 +7,7 @@ venv
 *.log
 temp/
 frontend/README.md
-tmp/
+tmp/*
+!tmp/.gitkeep
+logs/*
+!logs/.gitkeep
