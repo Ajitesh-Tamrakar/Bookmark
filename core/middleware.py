@@ -28,7 +28,7 @@ class SetupRequiredMiddleware:
                     {'error': 'Setup required. Complete setup before using bookmark.'},
                     status = 503
                 )
-        except Config.DoesNotExist:
+        except Exception:
             return JsonResponse(
                 {'error': 'Config not found. Run migrations first.'},
                 status=503

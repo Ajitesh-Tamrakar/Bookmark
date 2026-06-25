@@ -96,11 +96,13 @@ def pull_models(request):
     if not models and not whisper:
         return JsonResponse({'error': 'models or whisper is required'}, status=400)
 
-    for model in models:
-        pull_manager.pull_model(model)
-
-    if whisper:
-        pull_manager.pull_whisper(whisper)
+    try:
+        for model in models:
+            pull_manager.pull_model(model)
+        if whisper:
+            pull_manager.pull_whisper(whisper)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'status': 'pulling', 'models': models, 'whisper': whisper})
 
@@ -109,7 +111,10 @@ def pull_models(request):
 def pull_status(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
-    return JsonResponse(pull_manager.get_status())
+    try:
+        return JsonResponse(pull_manager.get_status())
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 #Dev check

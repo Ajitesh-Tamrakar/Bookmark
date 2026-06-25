@@ -295,6 +295,10 @@ export default function SetupPage() {
     );
 
     // Poll pull status every second
+    startPolling(allKeys, whisperKey);
+  }
+
+  function startPolling(allKeys, whisperKey) {
     pollRef.current = setInterval(async () => {
       try {
         const res = await fetch('/setup/pull-status/');
@@ -330,6 +334,35 @@ export default function SetupPage() {
 
   // Stop polling on unmount
   useEffect(() => () => stopPolling(), []);
+
+  // Resume polling on page reload if download is still in progress
+  useEffect(() => {
+    const whisperKey = `whisper-${whisper}`;
+    const rows = buildRows(embedProvider, embedModel, genProvider, genModel, whisper);
+    const ollamaModels = rows
+      .filter((r) => r.kind === 'model' && r.id !== 'whisper')
+      .map((r) => r.label);
+    const allKeys = [...ollamaModels, whisperKey];
+
+    fetch('/setup/pull-status/')
+      .then((r) => r.json())
+      .then((data) => {
+        const anyActive = allKeys.some((k) => data[k]?.status === 'pulling');
+        if (!anyActive) return;
+
+        setCheckRows(rows.map((r) => {
+          const key = r.id === 'whisper' ? whisperKey : r.label;
+          const info = data[key];
+          if (!info) return { ...r, status: 'pending', loaded: 0 };
+          if (info.status === 'done') return { ...r, status: 'ok', loaded: r.size };
+          if (info.status === 'error') return { ...r, status: 'error', loaded: 0 };
+          return { ...r, status: 'progress', loaded: Math.round((info.percent / 100) * r.size) };
+        }));
+        setCheckState('running');
+        startPolling(allKeys, whisperKey);
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------------------------------------------------------------------------
   // Scroll-spy nav with IntersectionObserver
