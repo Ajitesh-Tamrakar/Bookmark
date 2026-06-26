@@ -15,8 +15,9 @@ class SetupRequiredMiddleware:
     def __call__(self, request):
         #check if path is exempted ?
 
+        normalized = request.path.rstrip('/') + '/'
         for path in EXEMPT_PATH:
-            if request.path.startswith(path):
+            if normalized.startswith(path):
                 return self.get_response(request)
             
 
