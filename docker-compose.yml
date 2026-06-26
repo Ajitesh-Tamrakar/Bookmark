@@ -77,6 +77,13 @@ services:
     ports:
       - "8080:8080"
 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
     depends_on:
       db:
         condition: service_healthy
@@ -120,6 +127,8 @@ services:
       db:
         condition: service_healthy
       ollama:
+        condition: service_healthy
+      backend:
         condition: service_healthy
   frontend:
     build:

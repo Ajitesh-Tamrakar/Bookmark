@@ -243,3 +243,7 @@ def pipeline_retry(request, bookmark_id):
         return JsonResponse({'error': 'bookmark not found or not in failed state'}, status=404)
 
     return JsonResponse({'status': 'queued'})
+
+
+def health(request):
+    return JsonResponse({"status": "ok"})

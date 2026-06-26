@@ -106,8 +106,11 @@ def init_session():
 
 
 def _capture_system_specs():
-    from core.models import Config  # inline import avoids circular deps at module level
-    cfg = Config.objects.filter(id=1).first()
+    try:
+        from core.models import Config
+        cfg = Config.objects.filter(id=1).first()
+    except Exception:
+        cfg = None
     return (
         platform.system(),
         platform.version(),
