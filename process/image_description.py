@@ -59,7 +59,8 @@ def extract_image(bookmark):
         if result['status'] == 'failed':
             return {'status': 'failed', 'error': f"download failed: {result['error']}"}
 
-        description = analyze_image(temp_path)
+        model = Config.get().generation_model_name
+        description = analyze_image(temp_path, model)
         if not description:
             return {'status': 'failed', 'error': 'VLM returned no description'}
 
