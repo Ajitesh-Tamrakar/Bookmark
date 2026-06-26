@@ -3,6 +3,7 @@ from django.utils import autoreload
 from process.pipeline import run_pipeline
 from core.models import Bookmark
 from django.db import transaction
+from django.utils.timezone import now
 import time
 
 
@@ -15,7 +16,9 @@ class Command(BaseCommand):
     def run_worker_loop(self):
         print('Worker started', flush=True)
         Bookmark.objects.filter(processing_status='processing').update(
-            processing_status='pending'
+            processing_status='pending',
+            current_step=None,
+            processing_started_at=None,
         )
 
         try:
@@ -34,8 +37,13 @@ class Command(BaseCommand):
                         .select_for_update()
                         .filter(id=pending.id)
                     )
-                    process.update(processing_status='processing')
+                    process.update(
+                        processing_status='processing',
+                        processing_started_at=now(),
+                        current_step='extraction',
+                    )
 
+                pending.refresh_from_db()
                 run_pipeline(pending)
                 time.sleep(5)
         except KeyboardInterrupt:

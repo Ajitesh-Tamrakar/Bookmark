@@ -150,6 +150,8 @@ def run_pipeline(bookmark):
         if bookmark.retry_count >= 3:
             break
 
+        Bookmark.objects.filter(id=bookmark.id).update(current_step=stage.__name__)
+
         report = stage(bookmark)
         logger.info(
             f'Completed stage: {report["stage"]} for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Status: {report["status"]}, Error: {report["error"]}')
@@ -159,16 +161,25 @@ def run_pipeline(bookmark):
                 Bookmark.objects.filter(id=bookmark.id).update(
                     retry_count=new_retry_count,
                     processing_status='pending',
+                    current_step=None,
+                    processing_started_at=None,
                     failed_at=report['stage'], processing_error=report['error'])
             else:
                 Bookmark.objects.filter(id=bookmark.id).update(
                     retry_count=new_retry_count,
                     processing_status='failed',
+                    current_step=None,
+                    processing_started_at=None,
                     failed_at=report['stage'], processing_error=report['error'])
             bookmark.refresh_from_db()
             break
         elif report['stage'] == 'embedding' and report['status'] == 'success':
-            Bookmark.objects.filter(id=bookmark.id).update(processing_status='complete', processed_at=now())
+            Bookmark.objects.filter(id=bookmark.id).update(
+                processing_status='complete',
+                current_step=None,
+                processing_started_at=None,
+                processed_at=now(),
+            )
             config = Config.objects.get(id=1)
             if config.embedding_locked == False:
                 Config.objects.filter(id=1).update(embedding_locked=True)

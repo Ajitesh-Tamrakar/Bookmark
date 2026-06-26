@@ -21,6 +21,10 @@
   --color-accent-error: #f0605a;
   --color-accent-info: #7aa2e3;
   --color-accent-audio: #c79ae3;
+  --color-accent-youtube: #e0726b;
+  --color-accent-linkedin: #6f9fd8;
+  --color-accent-pinterest: #d87a8e;
+  --color-accent-tag-ai: #a99adf;
 
   /* Animations */
   --animate-fade-up: fade-up 0.3s ease both;

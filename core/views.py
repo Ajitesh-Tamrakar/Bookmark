@@ -182,8 +182,8 @@ def pipeline_status(request):
         return rows
 
     processing = serialize(
-        Bookmark.objects.filter(processing_status='processing').order_by('saved_at'),
-        ['id', 'title', 'url', 'platform', 'retry_count', 'saved_at'],
+        Bookmark.objects.filter(processing_status='processing').order_by('processing_started_at'),
+        ['id', 'title', 'url', 'platform', 'retry_count', 'current_step', 'processing_started_at'],
     )
     pending = serialize(
         Bookmark.objects.filter(processing_status='pending').order_by('saved_at'),

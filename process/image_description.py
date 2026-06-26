@@ -1,21 +1,25 @@
+import logging
 import os
 
 import ollama
 
+from core.models import Config
 from process.helper_function import cleanup_temp_file, temp_file_path, update_raw_text_key
 from process.media_download import download_image
 
+logger = logging.getLogger(__name__)
 
-def analyze_image(image_path):
+
+def analyze_image(image_path, model):
     if not os.path.exists(image_path):
-        print(f"Error: The file at '{image_path}' was not found.")
-        return
+        logger.error(f"Image file not found: {image_path}")
+        return None
 
-    print("Analyzing image... Please wait...")
+    logger.info(f"Analyzing image with model '{model}'")
 
     try:
         response = ollama.chat(
-            model='gemma4:e2b',
+            model=model,
             messages=[
                 {
                     'role': 'user',
@@ -24,11 +28,10 @@ def analyze_image(image_path):
                 }
             ]
         )
-        return(response['message']['content'])
+        return response['message']['content']
 
     except Exception as e:
-        print(f"An error occurred: {e}")
-        print("Make sure Ollama is running (`ollama serve`) and the model is pulled (`ollama pull gemma4:e2b`).")
+        logger.error(f"Image analysis failed: {e}")
 
 
 IMAGE_URL_RESOLVERS = {

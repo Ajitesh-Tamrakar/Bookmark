@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 
 import PipelineNav from '../components/pipeline/PipelineNav';
 import WorkerStatusBar from '../components/pipeline/WorkerStatusBar';
@@ -145,11 +145,16 @@ export default function PipelinePage() {
   // ---------------------------------------------------------------------------
   // Derived data
   // ---------------------------------------------------------------------------
-  const procRows = data.processing.map((r) => ({
-    ...r,
-    stale: (clock - new Date(r.saved_at).getTime()) > STALE_THRESHOLD_SEC * 1000,
-    elapsed: fmtElapsed(clock - new Date(r.saved_at).getTime()),
-  }));
+  const procRows = data.processing.map((r) => {
+    const startedAt = r.processing_started_at
+      ? new Date(r.processing_started_at).getTime()
+      : new Date(r.saved_at).getTime();
+    return {
+      ...r,
+      stale: (clock - startedAt) > STALE_THRESHOLD_SEC * 1000,
+      elapsed: fmtElapsed(clock - startedAt),
+    };
+  });
 
   const pendingRows = data.pending.map((r) => ({
     ...r,
@@ -191,8 +196,26 @@ export default function PipelinePage() {
               dev
             </span>
           </div>
-          <div className="font-mono text-[11px] tracking-[0.04em] text-text-faint">
-            internal · processing monitor
+          <div className="flex items-center gap-4">
+            <Link
+              to="/search"
+              className="group inline-flex items-center gap-2 bg-[#0e0d11] border border-border-default rounded-lg text-text-secondary font-mono text-[11.5px] tracking-[0.04em] px-3 py-[7px] no-underline transition-all hover:border-border-strong hover:text-text-primary hover:bg-[#15141a]"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                <circle cx="11" cy="11" r="6.4" stroke="currentColor" strokeWidth="1.7" />
+                <path d="M16 16l4.5 4.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              </svg>
+              Search
+              <svg
+                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                className="shrink-0 text-text-faint transition-all group-hover:text-text-secondary group-hover:translate-x-[2px]"
+              >
+                <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+            <span className="font-mono text-[11px] tracking-[0.04em] text-text-faint">
+              internal · processing monitor
+            </span>
           </div>
         </div>
 

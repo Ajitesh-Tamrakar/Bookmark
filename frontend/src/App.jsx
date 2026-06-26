@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
-import Search from "./pages/Search"
+import SearchPage from "./pages/SearchPage"
 import SetupPage from "./pages/SetupPage"
 import RootRedirect from "./pages/RootRedirect"
 import PipelinePage from "./pages/PipelinePage"
@@ -11,7 +11,7 @@ function App(){
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/setup" element={<SetupPage />} />
-        <Route path="/search" element={<Search />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/pipeline" element={<PipelinePage />} />
       </Routes>
     </BrowserRouter>
