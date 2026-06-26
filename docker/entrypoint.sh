@@ -15,8 +15,12 @@ for ext in ['pgcrypto', 'vector']:
 print('[bookmark] Extensions ready.')
 "
 
-echo "[bookmark] Running migrations..."
-python manage.py migrate --noinput
+if [ "${SKIP_MIGRATE:-false}" != "true" ]; then
+    echo "[bookmark] Running migrations..."
+    python manage.py migrate --noinput
+else
+    echo "[bookmark] Skipping migrations (SKIP_MIGRATE=true)."
+fi
 
 
 echo "[bookmark] Starting command: $@"

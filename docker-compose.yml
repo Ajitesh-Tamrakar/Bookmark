@@ -94,6 +94,7 @@ services:
     command: python manage.py run_worker
 
     environment:
+      SKIP_MIGRATE: "true"
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-this-in-production}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
 
