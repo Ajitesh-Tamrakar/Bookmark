@@ -1,4 +1,5 @@
 from core.models import Bookmark, Tag, BookmarkTag, Chunk, Config
+from core.metrics import timed_event
 from django.utils.timezone import now
 import logging
 from ollama import embed
@@ -152,7 +153,15 @@ def run_pipeline(bookmark):
 
         Bookmark.objects.filter(id=bookmark.id).update(current_step=stage.__name__)
 
-        report = stage(bookmark)
+        with timed_event(
+            "pipeline_stage",
+            payload={"bookmark_id": str(bookmark.id), "stage": stage.__name__, "platform": bookmark.platform},
+        ) as p:
+            report = stage(bookmark)
+            p["success"] = (report["status"] == "success")
+            if report.get("error"):
+                p["error"] = report["error"]
+
         logger.info(
             f'Completed stage: {report["stage"]} for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Status: {report["status"]}, Error: {report["error"]}')
         if report['status'] == 'failed':

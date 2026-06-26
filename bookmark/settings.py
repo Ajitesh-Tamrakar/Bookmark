@@ -186,3 +186,8 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+METRICS_ENABLED = os.environ.get("METRICS_ENABLED", "true").lower() == "true"
+METRICS_DB_PATH = os.environ.get(
+    "METRICS_DB_PATH", str(BASE_DIR / "metrics" / "bookmark_metrics.sqlite")
+)

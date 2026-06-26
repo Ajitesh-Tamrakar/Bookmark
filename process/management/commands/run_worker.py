@@ -14,6 +14,9 @@ class Command(BaseCommand):
         autoreload.run_with_reloader(self.run_worker_loop)
 
     def run_worker_loop(self):
+        from core.metrics import set_process_role, init_session
+        set_process_role("worker")
+        init_session()
         print('Worker started', flush=True)
         Bookmark.objects.filter(processing_status='processing').update(
             processing_status='pending',

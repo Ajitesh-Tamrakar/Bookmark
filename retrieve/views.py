@@ -1,8 +1,11 @@
+import hashlib
+
 from django.http import JsonResponse
 from django.db import connection
 from django.db.models import Count
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Chunk, Bookmark, BookmarkTag, Tag, Config
+from core.metrics import timed_event
 from ollama import embed
 import logging
 
@@ -72,50 +75,60 @@ def search(request):
     tag_list = [t.strip() for t in tags_param.split(',') if t.strip()] if tags_param else []
     logic = request.GET.get('logic', 'and')
 
-    response = embed(model=_embedding_model(), input=q)
-    rows = _best_chunks(response.embeddings[0])
+    query_hash = hashlib.sha256(q.encode()).hexdigest()[:16]
+    results = []
 
-    # Tag filtering
-    if tag_list:
-        if logic == 'or':
-            allowed = set(
-                str(x) for x in BookmarkTag.objects
-                .filter(tag__name__in=tag_list)
-                .values_list('bookmark_id', flat=True)
-            )
-        else:
-            allowed = None
-            for name in tag_list:
-                ids = set(
+    with timed_event(
+        "search_query",
+        payload={"query_hash": query_hash, "used_tag_filter": bool(tag_list)},
+    ) as p:
+        response = embed(model=_embedding_model(), input=q)
+        rows = _best_chunks(response.embeddings[0])
+
+        # Tag filtering
+        if tag_list:
+            if logic == 'or':
+                allowed = set(
                     str(x) for x in BookmarkTag.objects
-                    .filter(tag__name=name)
+                    .filter(tag__name__in=tag_list)
                     .values_list('bookmark_id', flat=True)
                 )
-                allowed = ids if allowed is None else allowed & ids
-        rows = [(bid, dist, ts) for bid, dist, ts in rows if bid in allowed]
+            else:
+                allowed = None
+                for name in tag_list:
+                    ids = set(
+                        str(x) for x in BookmarkTag.objects
+                        .filter(tag__name=name)
+                        .values_list('bookmark_id', flat=True)
+                    )
+                    allowed = ids if allowed is None else allowed & ids
+            rows = [(bid, dist, ts) for bid, dist, ts in rows if bid in allowed]
 
-    rows.sort(key=lambda r: r[1])
+        rows.sort(key=lambda r: r[1])
 
-    bid_list = [r[0] for r in rows]
-    chunk_map = {r[0]: {'distance': r[1], 'timestamp_seconds': r[2]} for r in rows}
+        bid_list = [r[0] for r in rows]
+        chunk_map = {r[0]: {'distance': r[1], 'timestamp_seconds': r[2]} for r in rows}
 
-    b_map = {
-        str(b['id']): b
-        for b in Bookmark.objects.filter(id__in=bid_list)
-        .values('id', 'title', 'url', 'platform', 'author', 'saved_at')
-    }
-    tag_map = _fetch_tags(bid_list)
+        b_map = {
+            str(b['id']): b
+            for b in Bookmark.objects.filter(id__in=bid_list)
+            .values('id', 'title', 'url', 'platform', 'author', 'saved_at')
+        }
+        tag_map = _fetch_tags(bid_list)
 
-    results = []
-    for bid in bid_list:
-        b = b_map.get(bid)
-        if not b:
-            continue
-        c = chunk_map[bid]
-        results.append(_serialize(b, tag_map.get(bid, []), extra={
-            'distance': c['distance'],
-            'timestamp_seconds': c['timestamp_seconds'],
-        }))
+        for bid in bid_list:
+            b = b_map.get(bid)
+            if not b:
+                continue
+            c = chunk_map[bid]
+            results.append(_serialize(b, tag_map.get(bid, []), extra={
+                'distance': c['distance'],
+                'timestamp_seconds': c['timestamp_seconds'],
+            }))
+
+        p["result_count"] = len(results)
+        p["top_score"] = results[0]['distance'] if results else None
+        p["fallback_triggered"] = False
 
     return JsonResponse({'query': q, 'results': results})
 
