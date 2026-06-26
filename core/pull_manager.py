@@ -32,17 +32,28 @@ def _whisper_worker(whisper_size):
     key = f'whisper-{whisper_size}'
     repo_id = WHISPER_MODEL_MAP.get(whisper_size, f'openai/whisper-{whisper_size}')
     try:
-        from huggingface_hub import HfApi, hf_hub_download
+        from huggingface_hub import snapshot_download
+        import tqdm as tqdm_module
 
-        api = HfApi()
-        files = [f.rfilename for f in api.model_info(repo_id).siblings or []]
-        total = len(files) or 1
+        # Accumulate byte totals across all files so we can report real percent.
+        # Lists are used so the nested class can mutate them.
+        _total_bytes = [0]
+        _done_bytes  = [0]
 
-        for i, filename in enumerate(files):
-            hf_hub_download(repo_id=repo_id, filename=filename)
-            percent = int((i + 1) / total * 100)
-            with _lock:
-                _pull_status[key] = {'status': 'pulling', 'percent': percent}
+        class _ByteProgress(tqdm_module.tqdm):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                if self.total:
+                    _total_bytes[0] += self.total
+
+            def update(self, n=1):
+                super().update(n)
+                _done_bytes[0] += n
+                pct = min(99, int(_done_bytes[0] / _total_bytes[0] * 100)) if _total_bytes[0] else 0
+                with _lock:
+                    _pull_status[key] = {'status': 'pulling', 'percent': pct}
+
+        snapshot_download(repo_id=repo_id, tqdm_class=_ByteProgress)
 
         with _lock:
             _pull_status[key] = {'status': 'done', 'percent': 100}

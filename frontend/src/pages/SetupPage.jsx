@@ -299,6 +299,12 @@ export default function SetupPage() {
   }
 
   function startPolling(allKeys, whisperKey) {
+    // If a key is completely absent from the status response for this many
+    // consecutive polls we treat it as an error (covers Django restart wiping
+    // the in-memory state while the frontend is still polling).
+    const MISSING_LIMIT = 30;
+    const missingCount = {};
+
     pollRef.current = setInterval(async () => {
       try {
         const res = await fetch('/setup/pull-status/');
@@ -316,14 +322,24 @@ export default function SetupPage() {
           })
         );
 
+        let forceStop = false;
+        for (const k of allKeys) {
+          if (!data[k]) {
+            missingCount[k] = (missingCount[k] || 0) + 1;
+            if (missingCount[k] >= MISSING_LIMIT) forceStop = true;
+          } else {
+            missingCount[k] = 0;
+          }
+        }
+
         const allDone = allKeys.every(
           (k) => data[k]?.status === 'done' || data[k]?.status === 'error'
         );
         const anyError = allKeys.some((k) => data[k]?.status === 'error');
 
-        if (allDone) {
+        if (allDone || forceStop) {
           stopPolling();
-          setCheckState(anyError ? 'error' : 'ok');
+          setCheckState(anyError || forceStop ? 'error' : 'ok');
         }
       } catch {
         stopPolling();
