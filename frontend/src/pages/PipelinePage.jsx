@@ -66,6 +66,8 @@ export default function PipelinePage() {
 
   const pollRef = useRef(null);
 
+  useEffect(() => { document.title = 'Bookmark · Pipeline'; }, []);
+
   const fetchStatus = async () => {
     try {
       const res = await fetch('/pipeline/status/');

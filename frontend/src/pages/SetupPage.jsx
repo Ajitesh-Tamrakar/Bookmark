@@ -332,6 +332,8 @@ export default function SetupPage() {
     }, 1000);
   }
 
+  useEffect(() => { document.title = 'Bookmark · Setup'; }, []);
+
   // Stop polling on unmount
   useEffect(() => () => stopPolling(), []);
 

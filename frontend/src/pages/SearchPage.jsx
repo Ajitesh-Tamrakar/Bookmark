@@ -47,6 +47,8 @@ export default function SearchPage() {
 
   const debounceRef = useRef(null);
 
+  useEffect(() => { document.title = 'Bookmark · Search'; }, []);
+
   // Fetch tags list and pipeline visibility on mount
   useEffect(() => {
     fetch('/retrieve/tags/')
