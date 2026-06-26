@@ -420,7 +420,7 @@ export default function SetupPage() {
   async function handleConfirmComplete() {
     setConfirmOpen(false);
     try {
-      const res = await fetch('/setup/', {
+      const res = await fetch('/setup/complete/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

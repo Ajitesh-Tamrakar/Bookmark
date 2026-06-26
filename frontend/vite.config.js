@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     port: 8081,
     proxy: {
-      '/setup': backendUrl,
+      '^/setup/(?!$)': backendUrl,
       '/pipeline/': backendUrl,
       '/capture': backendUrl,
       '/retrieve': backendUrl,
