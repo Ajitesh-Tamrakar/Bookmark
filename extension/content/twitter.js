@@ -11,6 +11,34 @@ function getOriginalImageUrl(url) {
 const BUTTON_CLASS = "my-twitter-save-btn";
 
 /* ===========================
+   SAVED-STATE HELPER (shared, duplicated per content script)
+=========================== */
+
+function bmSetState(btn, next) { // 'saving' | 'saved' | 'error'
+    if (!btn) return;
+    btn.classList.remove("bm-saving", "bm-saved", "bm-error");
+    const label = btn.querySelector(".bm-label");
+    if (next === "saving") btn.classList.add("bm-saving");
+    if (next === "error") {
+        // reset aria back to the idle/unsaved announcement — otherwise a failure
+        // after a prior success leaves aria-pressed="true"/"Saved" under a red stroke
+        btn.classList.add("bm-error");
+        btn.setAttribute("aria-pressed", "false");
+        btn.setAttribute("aria-label", "Save to Bookmark");
+        if (label) label.textContent = "Save";
+    }
+    if (next === "saved") {
+        btn.classList.add("bm-saved");
+        btn.setAttribute("aria-pressed", "true");
+        btn.setAttribute("aria-label", "Saved to Bookmark");
+        if (label) label.textContent = "Saved";
+        btn.classList.remove("bm-pulse");
+        void btn.offsetWidth; // reflow so the pulse can replay
+        btn.classList.add("bm-pulse");
+    }
+}
+
+/* ===========================
    SCRAPE SINGLE TWEET
 =========================== */
 
@@ -57,7 +85,7 @@ function extractTweet(tweet) {
 
     const hasMedia = images.length > 0 || videos.length > 0;
 
-    source_url = tweetUrl; // For backward compatibility with older backend expecting source_url
+    const source_url = tweetUrl; // For backward compatibility with older backend expecting source_url
     const mandatory_fields = {
         source_url,
         platform: "twitter",
@@ -87,17 +115,17 @@ function extractTweet(tweet) {
 
 function createButton() {
     const button = document.createElement("button");
-    button.className = BUTTON_CLASS;
-    button.innerHTML = "📥";
-    Object.assign(button.style, {
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        fontSize: "18px",
-        padding: "8px",
-        color: "#1d9bf0",
-        marginLeft: "8px",
-    });
+    button.className = "my-twitter-save-btn bm-btn bm-btn--x";
+    button.type = "button";
+    button.setAttribute("aria-label", "Save to Bookmark");
+    button.setAttribute("aria-pressed", "false");
+    button.innerHTML = `
+        <span class="bm-icon-wrap">
+            <svg viewBox="0 0 24 24" width="17" height="17">
+                <path class="bm-ribbon" d="M6 3.5C6 2.67 6.67 2 7.5 2h9c.83 0 1.5.67 1.5 1.5v18l-7-4.5-7 4.5v-18z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none" />
+                <circle class="bm-dot" cx="12" cy="9" r="1.7" fill="#EF9F27" />
+            </svg>
+        </span>`;
     return button;
 }
 
@@ -108,12 +136,12 @@ function createButton() {
 function injectButtonIntoTweet(tweet) {
     if (tweet.querySelector(`.${BUTTON_CLASS}`)) return;
 
-    const buttons = tweet.querySelectorAll("button");
-    if (!buttons.length) return;
+    // Mount inside the tweet's action row so the button sits inline with
+    // reply/retweet/like/bookmark, not detached to the right.
+    const group = tweet.querySelector('[role="group"]');
+    if (!group) return;
 
-    const lastButton = buttons[buttons.length - 1];
-    const saveButton = createButton();
-    lastButton.parentElement?.insertAdjacentElement("afterend", saveButton);
+    group.appendChild(createButton());
 }
 
 /* ===========================
@@ -144,6 +172,8 @@ document.addEventListener("click", (event) => {
     console.log(JSON.stringify(payload, null, 2));
     console.groupEnd();
 
+    bmSetState(button, "saving");
+
     chrome.runtime.sendMessage({ type: "SAVE", data: payload }, (response) => {
         console.group("📨 Response From Background");
         console.log(response);
@@ -151,6 +181,7 @@ document.addEventListener("click", (event) => {
             console.error("Runtime Error:", chrome.runtime.lastError);
         }
         console.groupEnd();
+        bmSetState(button, response?.status === "OK" ? "saved" : "error");
     });
 });
 

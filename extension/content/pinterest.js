@@ -3,6 +3,34 @@ const BUTTON_CLASS = "my-pinterest-save-btn";
 console.log("[PINTEREST-EXT] Loaded");
 
 /* ===========================
+   SAVED-STATE HELPER (shared, duplicated per content script)
+=========================== */
+
+function bmSetState(btn, next) { // 'saving' | 'saved' | 'error'
+    if (!btn) return;
+    btn.classList.remove("bm-saving", "bm-saved", "bm-error");
+    const label = btn.querySelector(".bm-label");
+    if (next === "saving") btn.classList.add("bm-saving");
+    if (next === "error") {
+        // reset aria back to the idle/unsaved announcement — otherwise a failure
+        // after a prior success leaves aria-pressed="true"/"Saved" under a red stroke
+        btn.classList.add("bm-error");
+        btn.setAttribute("aria-pressed", "false");
+        btn.setAttribute("aria-label", "Save to Bookmark");
+        if (label) label.textContent = "Save";
+    }
+    if (next === "saved") {
+        btn.classList.add("bm-saved");
+        btn.setAttribute("aria-pressed", "true");
+        btn.setAttribute("aria-label", "Saved to Bookmark");
+        if (label) label.textContent = "Saved";
+        btn.classList.remove("bm-pulse");
+        void btn.offsetWidth; // reflow so the pulse can replay
+        btn.classList.add("bm-pulse");
+    }
+}
+
+/* ===========================
    EXTRACT PIN
 =========================== */
 
@@ -48,12 +76,15 @@ function onButtonClick(event, pin) {
     event.preventDefault();
     event.stopPropagation();
 
+    const btn = event.currentTarget;
     const payload = extractPin(pin);
 
     console.group("📌 Sending Pin Payload");
     console.log(payload);
     console.log(JSON.stringify(payload, null, 2));
     console.groupEnd();
+
+    bmSetState(btn, "saving");
 
     chrome.runtime.sendMessage({ type: "SAVE", data: payload }, (response) => {
         console.group("📨 Response From Background");
@@ -62,6 +93,7 @@ function onButtonClick(event, pin) {
             console.error("Runtime Error:", chrome.runtime.lastError);
         }
         console.groupEnd();
+        bmSetState(btn, response?.status === "OK" ? "saved" : "error");
     });
 }
 /* ===========================
@@ -77,21 +109,24 @@ function addButton(pin) {
 
     const btn = document.createElement("button");
 
-    btn.className = BUTTON_CLASS;
-    btn.textContent = "Save";
+    btn.className = "my-pinterest-save-btn bm-btn bm-btn--pinterest";
+    btn.type = "button";
+    btn.setAttribute("aria-label", "Save to Bookmark");
+    btn.setAttribute("aria-pressed", "false");
+    btn.innerHTML = `
+        <span class="bm-icon-wrap">
+            <svg viewBox="0 0 24 24" width="15" height="15">
+                <path class="bm-ribbon" d="M6 3.5C6 2.67 6.67 2 7.5 2h9c.83 0 1.5.67 1.5 1.5v18l-7-4.5-7 4.5v-18z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none" />
+                <circle class="bm-dot" cx="12" cy="9" r="1.7" fill="#EF9F27" />
+            </svg>
+        </span>`;
 
+    // instance positioning only — bottom-left, clear of Pinterest's own top-right Save pill
     Object.assign(btn.style, {
         position: "absolute",
-        top: "8px",
-        right: "8px",
-        zIndex: "999999",
-        background: "#e60023",
-        color: "#fff",
-        border: "none",
-        borderRadius: "999px",
-        padding: "8px 12px",
-        fontWeight: "600",
-        cursor: "pointer"
+        bottom: "8px",
+        left: "8px",
+        zIndex: "999999"
     });
 
     btn.addEventListener("click", (e) =>

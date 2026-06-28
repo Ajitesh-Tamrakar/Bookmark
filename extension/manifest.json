@@ -45,6 +45,9 @@
             ],
             "js": [
                 "content/twitter.js"
+            ],
+            "css": [
+                "content/button.css"
             ]
         },
         {
@@ -53,6 +56,9 @@
             ],
             "js": [
                 "content/pinterest.js"
+            ],
+            "css": [
+                "content/button.css"
             ]
         },
         {
@@ -61,6 +67,9 @@
             ],
             "js": [
                 "content/youtube.js"
+            ],
+            "css": [
+                "content/button.css"
             ]
         },
         {
@@ -78,6 +87,9 @@
             ],
             "js": [
                 "content/linkedin.js"
+            ],
+            "css": [
+                "content/button.css"
             ]
         }
     ],

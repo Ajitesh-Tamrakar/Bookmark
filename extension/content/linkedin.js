@@ -4,6 +4,34 @@ const PROCESSED_ATTR = "data-linkedin-save-processed";
 const DEBUG = false;
 
 /* ===========================
+   SAVED-STATE HELPER (shared, duplicated per content script)
+=========================== */
+
+function bmSetState(btn, next) { // 'saving' | 'saved' | 'error'
+    if (!btn) return;
+    btn.classList.remove("bm-saving", "bm-saved", "bm-error");
+    const label = btn.querySelector(".bm-label");
+    if (next === "saving") btn.classList.add("bm-saving");
+    if (next === "error") {
+        // reset aria back to the idle/unsaved announcement — otherwise a failure
+        // after a prior success leaves aria-pressed="true"/"Saved" under a red stroke
+        btn.classList.add("bm-error");
+        btn.setAttribute("aria-pressed", "false");
+        btn.setAttribute("aria-label", "Save to Bookmark");
+        if (label) label.textContent = "Save";
+    }
+    if (next === "saved") {
+        btn.classList.add("bm-saved");
+        btn.setAttribute("aria-pressed", "true");
+        btn.setAttribute("aria-label", "Saved to Bookmark");
+        if (label) label.textContent = "Saved";
+        btn.classList.remove("bm-pulse");
+        void btn.offsetWidth; // reflow so the pulse can replay
+        btn.classList.add("bm-pulse");
+    }
+}
+
+/* ===========================
    LOGGER
 =========================== */
 
@@ -38,6 +66,37 @@ function getLikelyLongestText(spans) {
         .map(el => cleanText(el.innerText))
         .filter(Boolean)
         .sort((a, b) => b.length - a.length)[0] || "";
+}
+
+// Accessible name of a control: prefer aria-label (LinkedIn labels its action
+// buttons even when the visible text is icon-only / hashed-class markup), then
+// fall back to visible text. Stable across the SDUI redesign's obfuscated
+// class/componentkey churn.
+function accessibleName(el) {
+    return cleanText(el.getAttribute("aria-label") || el.textContent || "");
+}
+
+// The social action labels we expect on a feed post, in roughly DOM order.
+const ACTION_LABELS = ["like", "comment", "repost", "send"];
+
+function actionLabelMatch(el) {
+    const name = accessibleName(el).toLowerCase();
+    if (!name) return null;
+    return ACTION_LABELS.find(label => name.includes(label)) || null;
+}
+
+// A real feed post (vs. a sidebar/menu listitem that also uses role="listitem")
+// either announces itself via the "Feed post" heading or carries an author
+// profile link alongside at least one social action control.
+function looksLikeFeedPost(post) {
+    const heading = [...post.querySelectorAll("h2")]
+        .some(h => cleanText(h.textContent).toLowerCase() === "feed post");
+    if (heading) return true;
+
+    const hasAuthor = !!post.querySelector('a[href*="/in/"]');
+    const hasAction = [...post.querySelectorAll('button,[role="button"],a')]
+        .some(el => actionLabelMatch(el));
+    return hasAuthor && hasAction;
 }
 
 /* ===========================
@@ -256,31 +315,39 @@ function injectButton(post, index) {
         return;
     }
 
-    const actions = [...post.querySelectorAll("button,a")];
-    const sendBtn = actions.find(el => cleanText(el.textContent) === "Send");
-
-    if (!sendBtn) {
+    // Skip listitems that aren't actually feed posts (sidebar entries, menus).
+    if (!looksLikeFeedPost(post)) {
         return;
     }
 
-    const btn = document.createElement("button");
-    btn.className = BUTTON_CLASS;
-    btn.type = "button";
-    btn.textContent = "💾 Save";
+    // Locate the social action row by accessible name rather than hashed
+    // classes. Collect every Like/Comment/Repost/Send control, then choose an
+    // insertion slot with graceful fallback. If none is found, bail WITHOUT
+    // flagging the post so a later mutation can retry once the row renders --
+    // better no button than one dropped in an unknown location.
+    const actionControls = [...post.querySelectorAll('button,[role="button"],a')]
+        .map(el => ({ el, label: actionLabelMatch(el) }))
+        .filter(item => item.label);
 
-    btn.style.cssText = `
-        background: #e0245e;
-        color: #ffffff;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        margin-left: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        line-height: 1;
-        z-index: 999999;
-    `;
+    if (!actionControls.length) {
+        return;
+    }
+
+    const sendCtrl = actionControls.find(item => item.label === "send");
+    const anchor = sendCtrl ? sendCtrl.el : actionControls[actionControls.length - 1].el;
+
+    const btn = document.createElement("button");
+    btn.className = `${BUTTON_CLASS} bm-btn bm-btn--linkedin`;
+    btn.type = "button";
+    btn.setAttribute("aria-label", "Save to Bookmark");
+    btn.setAttribute("aria-pressed", "false");
+    btn.innerHTML = `
+        <span class="bm-icon-wrap">
+            <svg viewBox="0 0 24 24" width="17" height="17">
+                <path class="bm-ribbon" d="M6 3.5C6 2.67 6.67 2 7.5 2h9c.83 0 1.5.67 1.5 1.5v18l-7-4.5-7 4.5v-18z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none" />
+                <circle class="bm-dot" cx="12" cy="9" r="1.7" fill="#EF9F27" />
+            </svg>
+        </span>`;
 
     btn.addEventListener("click", e => {
         e.preventDefault();
@@ -290,13 +357,15 @@ function injectButton(post, index) {
         // this specific post has arrived since the last periodic check.
         attemptResolvePermalinks();
 
-        console.table(
-            [...post.querySelectorAll("a[href]")]
-                .map(a => ({
-                    text: a.innerText,
-                    href: a.href
-                }))
-        );
+        if (DEBUG) {
+            console.table(
+                [...post.querySelectorAll("a[href]")]
+                    .map(a => ({
+                        text: a.innerText,
+                        href: a.href
+                    }))
+            );
+        }
 
         const payload = extractLinkedInPost(post);
 
@@ -304,23 +373,30 @@ function injectButton(post, index) {
             warn("Saved post without a confirmed permalink -- using DOM fallback URL", payload.post_url);
         }
 
-        console.group("💾 Sending LinkedIn Post Payload");
-        console.log(payload);
-        console.log(JSON.stringify(payload, null, 2));
-        console.groupEnd();
+        if (DEBUG) {
+            console.group("💾 Sending LinkedIn Post Payload");
+            console.log(payload);
+            console.log(JSON.stringify(payload, null, 2));
+            console.groupEnd();
+        }
+
+        bmSetState(btn, "saving");
 
         chrome.runtime.sendMessage({ type: "SAVE", data: payload }, (response) => {
-            console.group("📨 Response From Background");
-            console.log(response);
-            if (chrome.runtime.lastError) {
-                console.error("Runtime Error:", chrome.runtime.lastError);
+            if (DEBUG) {
+                console.group("📨 Response From Background");
+                console.log(response);
+                console.groupEnd();
             }
-            console.groupEnd();
+            if (chrome.runtime.lastError) {
+                error("Runtime Error:", chrome.runtime.lastError);
+            }
+            bmSetState(btn, response?.status === "OK" ? "saved" : "error");
         });
     });
 
     try {
-        sendBtn.insertAdjacentElement("afterend", btn);
+        anchor.insertAdjacentElement("afterend", btn);
         post.setAttribute(PROCESSED_ATTR, "true");
     } catch (err) {
         error(`Post #${index}: button insertion failed`, err);

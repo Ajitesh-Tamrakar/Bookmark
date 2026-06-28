@@ -1,3 +1,31 @@
+/* ===========================
+   SAVED-STATE HELPER (shared, duplicated per content script)
+=========================== */
+
+function bmSetState(btn, next) { // 'saving' | 'saved' | 'error'
+    if (!btn) return;
+    btn.classList.remove("bm-saving", "bm-saved", "bm-error");
+    const label = btn.querySelector(".bm-label");
+    if (next === "saving") btn.classList.add("bm-saving");
+    if (next === "error") {
+        // reset aria back to the idle/unsaved announcement — otherwise a failure
+        // after a prior success leaves aria-pressed="true"/"Saved" under a red stroke
+        btn.classList.add("bm-error");
+        btn.setAttribute("aria-pressed", "false");
+        btn.setAttribute("aria-label", "Save to Bookmark");
+        if (label) label.textContent = "Save";
+    }
+    if (next === "saved") {
+        btn.classList.add("bm-saved");
+        btn.setAttribute("aria-pressed", "true");
+        btn.setAttribute("aria-label", "Saved to Bookmark");
+        if (label) label.textContent = "Saved";
+        btn.classList.remove("bm-pulse");
+        void btn.offsetWidth; // reflow so the pulse can replay
+        btn.classList.add("bm-pulse");
+    }
+}
+
 function injectSaveButton() {
 
     // Prevent duplicates
@@ -36,21 +64,11 @@ function injectSaveButton() {
     console.log("ICON WRAPPER:", iconWrapper);
 
     if (iconWrapper) {
-
-        const iconUrl = chrome.runtime.getURL("icons/glean.svg");
-
         iconWrapper.innerHTML = `
-        <img
-            src="${iconUrl}"
-            style="
-                width:30px;
-                height:30px;
-                display:block;
-                object-fit:contain;
-                
-            "
-        />
-    `;
+        <svg viewBox="0 0 24 24" width="24" height="24" style="display:block">
+            <path class="bm-ribbon" d="M6 3.5C6 2.67 6.67 2 7.5 2h9c.83 0 1.5.67 1.5 1.5v18l-7-4.5-7 4.5v-18z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none" />
+            <circle class="bm-dot" cx="12" cy="9" r="1.7" fill="#EF9F27" />
+        </svg>`;
     }
     // Find actual button
     const btn = saveWrapper.querySelector("button");
@@ -67,6 +85,9 @@ function injectSaveButton() {
         const newBtn = btn.cloneNode(true);
 
         btn.parentNode.replaceChild(newBtn, btn);
+
+        newBtn.classList.add("bm-btn", "bm-btn--youtube");
+        newBtn.setAttribute("aria-pressed", "false");
 
         // Your click event
         newBtn.addEventListener("click", () => {
@@ -100,14 +121,16 @@ function injectSaveButton() {
                 platform_specific_data
             };
 
-            chrome.runtime.sendMessage({
-                type: 'SAVE',
-                data: data
-            });
-
             console.log('capturedData', data);
 
-            alert("Saved video!");
+            bmSetState(newBtn, "saving");
+            chrome.runtime.sendMessage({ type: "SAVE", data }, (response) => {
+                if (chrome.runtime.lastError || response?.status !== "OK") {
+                    bmSetState(newBtn, "error");
+                } else {
+                    bmSetState(newBtn, "saved");
+                }
+            });
         });
     }
 

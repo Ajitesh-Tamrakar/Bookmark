@@ -39,6 +39,12 @@ async function handleSave(platform, payload, sendResponse) {
                 await handleYouTube(payload, sendResponse);
                 break;
             case "twitter":
+                // NOTE: handleTwitter (FormData + blob upload) is intentionally NOT
+                // used yet. The backend capture view only parses JSON (json.loads on
+                // request.body) and has no file/image storage, so multipart POSTs 400.
+                // Two more changes are needed before switching: (1) backend multipart +
+                // media storage, (2) fix handleTwitter to read
+                // payload.platform_specific_data.images (not payload.images).
                 await handleGeneric(payload, sendResponse);
                 break;
             case "linkedin":
