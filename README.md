@@ -24,7 +24,7 @@ Everything runs on your machine. Nothing is sent anywhere.
 
 ## Requirements
 
-- [Docker](https://docs.docker.com/get-docker/) — the only thing you need to install manually
+- [Docker Desktop](https://docs.docker.com/get-docker/) — the only thing you need to install manually
 - 8 GB RAM minimum, 16 GB recommended
 - Google Chrome
 
@@ -34,100 +34,160 @@ Python, Node.js, PostgreSQL, pgvector, and Ollama are all handled inside Docker 
 
 ## Installation
 
+### Linux
+
 ```bash
 git clone https://github.com/Ajitesh-Tamrakar/Bookmark.git
 cd Bookmark
 bash install.sh
 ```
 
-The installer registers the `bookmark` CLI command on your system.
-That's all it does — Docker handles everything else.
-
-Then start Bookmark:
+This installs the `bookmark` CLI and starts all services. Then:
 
 ```bash
 bookmark start
 ```
 
-On first run, Ollama downloads the required AI models in the background.
-This takes a few minutes depending on your connection. Watch progress:
+---
+
+### macOS
 
 ```bash
-bookmark logs ollama
+git clone https://github.com/Ajitesh-Tamrakar/Bookmark.git
+cd Bookmark
+bash install.sh
 ```
 
-Once running, open **http://localhost:8081** in Chrome.
+Same as Linux — the script handles macOS differences automatically. Then:
 
-**Load the browser extension:**
-1. Open `chrome://extensions`
-2. Enable Developer mode (toggle, top-right corner)
+```bash
+bookmark start
+```
+
+> Make sure Docker Desktop is running before you run the script.
+
+---
+
+### Windows
+
+`bash` scripts don't run natively on Windows, so skip `install.sh` and use Docker directly.
+
+1. Install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/) and make sure it's running
+2. Open **PowerShell** or **Command Prompt** in the project folder
+3. Run:
+
+```powershell
+git clone https://github.com/Ajitesh-Tamrakar/Bookmark.git
+cd Bookmark
+docker compose up -d --build
+```
+
+4. Open **http://localhost:8081** in Chrome once it's ready (takes a minute or two on first run)
+
+> On first run, Docker pulls all the required images. This may take several minutes depending on your connection.
+
+---
+
+## Loading the Chrome Extension
+
+After the app is running, load the browser extension:
+
+1. Open **chrome://extensions** in Chrome
+2. Enable **Developer mode** using the toggle in the top-right corner
 3. Click **Load unpacked**
-4. Select the `extension/dist/` folder inside the repo
+4. Navigate to the repo folder and select the **`extension/dist/`** folder
+5. The Bookmark icon will appear in your Chrome toolbar
 
 ---
 
 ## Usage
 
-**Service control:**
+### Linux / macOS — `bookmark` CLI
+
 ```bash
-bookmark start       # start all services
-bookmark stop        # stop all services
-bookmark restart     # restart all services
-bookmark status      # show running containers
+bookmark start        # start all services
+bookmark stop         # stop all services
+bookmark restart      # restart all services
+bookmark status       # show running containers
 ```
 
 **Logs:**
 ```bash
-bookmark logs                # tail all services
-bookmark logs ollama         # tail Ollama — useful on first run to watch model download
-bookmark logs backend        # tail Django API
-bookmark logs frontend       # tail React app
-bookmark logs 200            # tail last 200 lines across all services
+bookmark logs                 # tail all services
+bookmark logs ollama          # watch model download progress (first run)
+bookmark logs backend         # tail Django API
+bookmark logs frontend        # tail React app
+bookmark logs 200             # tail last 200 lines across all services
 ```
 
 **Maintenance:**
 ```bash
-bookmark update      # git pull → rebuild containers → restart
-bookmark uninstall   # full removal — containers, volumes, and all saved data
+bookmark update       # git pull → rebuild containers → restart
+bookmark uninstall    # full removal — containers, volumes, and all saved data
+```
+
+---
+
+### Windows — Docker Compose
+
+```powershell
+docker compose up -d --build    # start (and build on first run)
+docker compose up -d            # start (after first run)
+docker compose down             # stop
+docker compose restart          # restart
+docker compose ps               # show running containers
+```
+
+**Logs:**
+```powershell
+docker compose logs -f                    # tail all services
+docker compose logs ollama -f             # watch model download (first run)
+docker compose logs backend -f            # tail Django API
+docker compose logs frontend -f           # tail React app
+docker compose logs --tail=200 -f         # tail last 200 lines
+```
+
+**Maintenance:**
+```powershell
+docker compose up -d --build              # rebuild after a git pull
+docker compose down -v --remove-orphans   # full uninstall (deletes all data)
 ```
 
 ---
 
 ## Troubleshooting
 
-**Permission denied on `docker compose`**
-
-Your user is not in the docker group. Run:
-```bash
-sudo usermod -aG docker $USER
-newgrp docker
-```
-Then try `bookmark start` again.
-
 **Models taking too long or search not working**
 
 `nomic-embed-text-v2-moe` and `gemma4:e2b` download in the background on
-first run. Search will not work until both are fully downloaded. Check:
+first run. Search will not work until both are fully downloaded. Check progress:
+
 ```bash
+# Linux / macOS
 bookmark logs ollama
+
+# Windows
+docker compose logs ollama -f
 ```
 
 **Port 8080 or 8081 already in use**
 
 Something else is using that port. Find and stop it:
+
 ```bash
+# Linux / macOS
 sudo lsof -i :8080
 sudo lsof -i :8081
+
+# Windows (PowerShell)
+netstat -ano | findstr :8080
+netstat -ano | findstr :8081
 ```
-Then run `bookmark start` again.
 
-**Permission denied running install.sh**
-
-Use `bash install.sh` instead of `./install.sh`.
+Then start Bookmark again.
 
 **Docker is not running**
 
-Start Docker and try again:
 ```bash
 # Linux
 sudo systemctl start docker
@@ -135,6 +195,21 @@ sudo systemctl start docker
 # macOS / Windows
 # Open Docker Desktop from your applications
 ```
+
+**Permission denied on `docker compose` (Linux)**
+
+Your user is not in the docker group. Run:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+Then try again.
+
+**Permission denied running install.sh (Linux / macOS)**
+
+Use `bash install.sh` instead of `./install.sh`.
 
 ---
 
@@ -157,5 +232,3 @@ Export your full library at any time from app settings as a single SQLite file.
 - [ ] General web page capture
 - [ ] Mobile companion app
 - [ ] Multi-device sync (end-to-end encrypted, opt-in)
-
----

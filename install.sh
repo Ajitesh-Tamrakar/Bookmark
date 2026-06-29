@@ -51,6 +51,7 @@ fi
 sed "s|BOOKMARK_REPO_ROOT_PLACEHOLDER|${REPO_ROOT}|g" \
   "$REPO_ROOT/bookmark-cli" > /tmp/bookmark-built
 
+sudo mkdir -p /usr/local/bin
 sudo cp /tmp/bookmark-built /usr/local/bin/bookmark
 sudo chmod +x /usr/local/bin/bookmark
 rm /tmp/bookmark-built
