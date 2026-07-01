@@ -129,7 +129,26 @@ def chunk_video_twitter(bookmark):
         return _failure(e)
 
 
+def chunk_video_web(bookmark):
+    try:
+        text = (bookmark.raw_text or {}).get("video")
+        if not text:
+            return _success()
+        Chunk.objects.create(
+            bookmark=bookmark,
+            text=text,
+            chunk_type=Chunk.ChunkType.VIDEO,
+            chunk_index=0,
+            timestamp_seconds=None,
+            word_count=_word_count(text),
+        )
+        return _success()
+    except Exception as e:
+        return _failure(e)
+
+
 VIDEO_CHUNK_LEAVES = {
     Bookmark.Platform.YOUTUBE: chunk_video_youtube,
     Bookmark.Platform.TWITTER: chunk_video_twitter,
+    Bookmark.Platform.WEB:     chunk_video_web,
 }

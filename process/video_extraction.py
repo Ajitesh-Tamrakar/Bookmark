@@ -81,7 +81,35 @@ def extract_video_twitter(bookmark):
         cleanup_temp_file(temp_path)
 
 
+def extract_video_web(bookmark):
+    video_url = (bookmark.platform_metadata or {}).get('embedded_video_url')
+    if not video_url:
+        return {'status': 'failed', 'error': 'no embedded_video_url found in platform_metadata'}
+
+    temp_path = temp_file_path(bookmark.id, 'video', 'mp4')
+    try:
+        download_result = download_video(video_url, temp_path)
+        if download_result['status'] == 'failed':
+            return {'status': 'failed', 'error': f"video download failed: {download_result['error']}"}
+
+        segments = transcribe_to_segments(temp_path)
+        if not segments:
+            update_raw_text_key(bookmark, "video", None)
+            return {'status': 'success', 'error': ''}
+
+        flat_text = ' '.join(seg['text'] for seg in segments)
+        update_raw_text_key(bookmark, "video", flat_text)
+        return {'status': 'success', 'error': ''}
+    except Exception as e:
+        logger.error(
+            f'Error occurred while processing web video for bookmark ID: {bookmark.id}, URL: {bookmark.url}, Error: {str(e)}')
+        return {'status': 'failed', 'error': str(e)}
+    finally:
+        cleanup_temp_file(temp_path)
+
+
 VIDEO_LEAVES = {
     'youtube': extract_video_youtube,
     'twitter': extract_video_twitter,
+    'web':     extract_video_web,
 }

@@ -38,6 +38,7 @@ IMAGE_URL_RESOLVERS = {
     'pinterest': lambda psd: psd.get('image_url'),
     'twitter':   lambda psd: (psd.get('images') or [None])[0],
     'linkedin':  lambda psd: (psd.get('images') or [None])[0],
+    'web':       lambda psd: psd.get('lead_image_url'),
 }
 
 
@@ -76,4 +77,5 @@ IMAGE_LEAVES = {
     'pinterest': extract_image,
     'twitter':   extract_image,
     'linkedin':  extract_image,
+    'web':       extract_image,
 }

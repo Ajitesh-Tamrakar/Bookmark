@@ -61,11 +61,24 @@ def _linkedin_fields(psd):
     }
 
 
+def _web_fields(psd):
+    text = psd.get("text_content")
+    return {
+        "has_text":     bool(text),
+        "has_image":    bool(psd.get("lead_image_url")),
+        "has_video":    bool(psd.get("embedded_video_url")),
+        "title":        psd.get("title"),
+        "author":       psd.get("author"),
+        "text_content": text,
+    }
+
+
 PLATFORM_EXTRACTORS = {
-    "youtube": _youtube_fields,
-    "twitter": _twitter_fields,
+    "youtube":   _youtube_fields,
+    "twitter":   _twitter_fields,
     "pinterest": _pinterest_fields,
-    "linkedin": _linkedin_fields,
+    "linkedin":  _linkedin_fields,
+    "web":       _web_fields,
 }
 
 
@@ -150,13 +163,6 @@ def capture(request):
 
     platform = mandatory_fields["platform"].lower()
     capture_method = mandatory_fields["capture_method"].lower()
-
-    if platform == "web":
-        # TODO: Define the generic web-page payload shape so modality flags can be derived without guessing.
-        logger.error("Generic web capture payload shape is not defined")
-        return JsonResponse(
-            {"error": "Generic web capture payload shape is not defined"}, status=400
-        )
 
     extractor = PLATFORM_EXTRACTORS.get(platform)
     if extractor is None:
