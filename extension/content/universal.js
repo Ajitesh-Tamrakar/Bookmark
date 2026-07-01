@@ -69,6 +69,11 @@ function extractWebPage() {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type !== "CAPTURE_WEB") return;
   const payload = extractWebPage();
-  chrome.runtime.sendMessage({ type: "SAVE", data: payload }, sendResponse);
+  chrome.runtime.sendMessage({ type: "SAVE", data: payload }, (response) => {
+    if (response?.status === "OK") {
+      window.bmShowConfirmation(response.data?.bookmark_id);
+    }
+    sendResponse(response);
+  });
   return true; // keep message channel open for async sendResponse
 });

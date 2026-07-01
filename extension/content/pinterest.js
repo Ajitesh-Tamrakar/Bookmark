@@ -94,6 +94,9 @@ function onButtonClick(event, pin) {
         }
         console.groupEnd();
         bmSetState(btn, response?.status === "OK" ? "saved" : "error");
+        if (response?.status === "OK") {
+            window.bmShowConfirmation(response.data?.bookmark_id);
+        }
     });
 }
 /* ===========================

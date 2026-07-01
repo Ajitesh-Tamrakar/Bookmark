@@ -1,55 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import { CssVarsProvider, extendTheme } from '@mui/joy/styles';
 
-import SetupNav from '../components/setup/SetupNav';
-import ProviderToggle from '../components/setup/ProviderToggle';
-import EmbeddingSection from '../components/setup/EmbeddingSection';
-import GenerationSection from '../components/setup/GenerationSection';
-import TranscriptionSection from '../components/setup/TranscriptionSection';
-import ApiKeysSection from '../components/setup/ApiKeysSection';
-import ReadinessSection from '../components/setup/ReadinessSection';
-import AdvancedDevMode from '../components/setup/AdvancedDevMode';
-import SetupCompleteModal from '../components/setup/SetupCompleteModal';
-import SetupDoneScreen from '../components/setup/SetupDoneScreen';
-
-// ---------------------------------------------------------------------------
-// Joy dark theme scoped to this page
-// ---------------------------------------------------------------------------
-const darkTheme = extendTheme({
-  colorSchemes: {
-    dark: {
-      palette: {
-        background: { surface: '#161519', body: '#0a0a0b', popup: '#121116' },
-        text: { primary: '#ededee', secondary: '#c9c7d0', tertiary: '#66646e' },
-        neutral: {
-          outlinedBorder: '#2a2930',
-          outlinedColor: '#c9c7d0',
-          outlinedBg: '#161519',
-          outlinedHoverBg: '#1b1a20',
-        },
-        focusVisible: 'rgba(250,250,250,0.3)',
-      },
-    },
-  },
-  components: {
-    JoySelect: {
-      styleOverrides: {
-        root: { backgroundColor: '#161519', borderColor: '#2a2930', color: '#ededee' },
-        listbox: { backgroundColor: '#161519', borderColor: '#2a2930' },
-      },
-    },
-    JoyOption: {
-      styleOverrides: {
-        root: { color: '#ededee', '&:hover': { backgroundColor: '#1b1a20' } },
-      },
-    },
-    JoyInput: {
-      styleOverrides: {
-        root: { backgroundColor: '#161519', borderColor: '#2a2930', color: '#ededee' },
-      },
-    },
-  },
-});
+import {
+  SetupNav,
+  ProviderToggle,
+  EmbeddingSection,
+  GenerationSection,
+  TranscriptionSection,
+  ApiKeysSection,
+  ReadinessSection,
+  AdvancedDevMode,
+  SetupCompleteModal,
+  SetupDoneScreen,
+  SectionHeader,
+  Button,
+} from '../design-system';
 
 // ---------------------------------------------------------------------------
 // Static data
@@ -62,21 +26,7 @@ const DEF = {
 // Approximate download sizes in MB
 const MODEL_SIZES = {
   'nomic-embed-text-v2-moe': 768,
-  // 'mxbai-embed-large': 670,
-  // 'all-minilm': 45,
-  // 'text-embedding-3-small': 0,
-  // 'text-embedding-3-large': 0,
-  // 'text-embedding-004': 0,
   'gemma4:e2b': 7200,
-  // 'llama3.2:3b': 2000,
-  // 'qwen2.5:7b': 4700,
-  // 'mistral:7b': 4100,
-  // 'gpt-4o-mini': 0,
-  // 'gpt-4o': 0,
-  // 'claude-haiku-4': 0,
-  // 'claude-sonnet-4': 0,
-  // 'gemini-2.0-flash': 0,
-  // 'gemini-1.5-pro': 0,
 };
 
 const WHISPER_SIZES = { tiny: 39, base: 74, small: 244, medium: 769, large: 1536 };
@@ -149,8 +99,6 @@ export default function SetupPage() {
     // reset to first model for that provider
     const firstModels = {
       ollama: 'nomic-embed-text-v2-moe',
-      // openai: 'text-embedding-3-small',
-      // google: 'text-embedding-004',
     };
     setEmbedModel(firstModels[val] || '');
     scheduleCheck();
@@ -459,65 +407,47 @@ export default function SetupPage() {
   ].filter((n) => n.show);
 
   // ---------------------------------------------------------------------------
-  // Section heading helper
-  // ---------------------------------------------------------------------------
-  function SectionEyebrow({ label, tag }) {
-    return (
-      <div className="font-mono text-[11px] tracking-[0.14em] uppercase text-text-faint">
-        {label}
-        {tag && <span className="text-accent-warning"> · {tag}</span>}
-      </div>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <CssVarsProvider theme={darkTheme} defaultMode="dark">
-      <div
-        className="min-h-screen bg-bg-base font-sans"
-        style={{ WebkitFontSmoothing: 'antialiased' }}
-      >
-        {done ? (
-          <SetupDoneScreen
-            embedModel={embedModel}
-            genModel={genModel}
-            whisper={whisper}
-            devMode={devMode}
-          />
-        ) : (
-          <div className="flex gap-[60px] w-full max-w-[1020px] mx-auto px-8 py-[72px] pb-[200px] items-start">
-            <SetupNav items={navItems} activeSection={activeSection} />
+    <div
+      className="min-h-screen bg-bg-base font-sans"
+      style={{ WebkitFontSmoothing: 'antialiased' }}
+    >
+      {done ? (
+        <SetupDoneScreen
+          embedModel={embedModel}
+          genModel={genModel}
+          whisper={whisper}
+          devMode={devMode}
+        />
+      ) : (
+        <div className="flex gap-[60px] w-full max-w-[1020px] mx-auto px-8 py-[72px] pb-[200px] items-start">
+          <SetupNav items={navItems} activeSection={activeSection} />
 
-            <div className="flex-1 min-w-0 flex flex-col gap-[52px]">
-              {/* ---- Welcome ---- */}
-              <section id="welcome">
-                <SectionEyebrow label="Bookmark" />
-                <h2 className="text-[21px] font-semibold tracking-tight text-text-primary mt-[7px] mb-3">
-                  Welcome
-                </h2>
-                <p className="text-[14px] text-text-muted leading-relaxed max-w-[520px]">
-                  This wizard configures your local AI pipeline. All models run on your machine
-                  unless you choose a hosted provider. You&apos;ll only need to do this once.
-                </p>
-              </section>
+          <div className="flex-1 min-w-0 flex flex-col gap-[52px]">
+            {/* ---- Welcome ---- */}
+            <section id="welcome">
+              <SectionHeader
+                eyebrow="Bookmark"
+                title="Welcome"
+                description="This wizard configures your local AI pipeline. All models run on your machine unless you choose a hosted provider. You'll only need to do this once."
+                className="max-w-[520px]"
+              />
+            </section>
 
-              {/* ---- Provider ---- */}
-              <section id="provider">
-                <SectionEyebrow label="Provider" />
-                <h2 className="text-[21px] font-semibold tracking-tight text-text-primary mt-[7px] mb-4">
-                  Choose your provider
-                </h2>
+            {/* ---- Provider ---- */}
+            <section id="provider">
+              <SectionHeader eyebrow="Provider" title="Choose your provider" />
+              <div className="mt-4">
                 <ProviderToggle top={top} onSetTop={handleSetTop} />
-              </section>
+              </div>
+            </section>
 
-              {/* ---- Embedding ---- */}
-              <section id="embedding">
-                <SectionEyebrow label="Embedding" tag="permanent" />
-                <h2 className="text-[21px] font-semibold tracking-tight text-text-primary mt-[7px] mb-4">
-                  Embedding model
-                </h2>
+            {/* ---- Embedding ---- */}
+            <section id="embedding">
+              <SectionHeader eyebrow="Embedding" eyebrowTag="permanent" title="Embedding model" />
+              <div className="mt-4">
                 <EmbeddingSection
                   expanded={expanded}
                   embedProvider={embedProvider}
@@ -527,14 +457,13 @@ export default function SetupPage() {
                   onCustomize={() => { setExpanded(true); setTop('custom'); }}
                   onToggleExpanded={() => setExpanded((v) => !v)}
                 />
-              </section>
+              </div>
+            </section>
 
-              {/* ---- Generation ---- */}
-              <section id="generation">
-                <SectionEyebrow label="Generation" />
-                <h2 className="text-[21px] font-semibold tracking-tight text-text-primary mt-[7px] mb-4">
-                  Generation model
-                </h2>
+            {/* ---- Generation ---- */}
+            <section id="generation">
+              <SectionHeader eyebrow="Generation" title="Generation model" />
+              <div className="mt-4">
                 <GenerationSection
                   expanded={expanded}
                   genProvider={genProvider}
@@ -543,24 +472,22 @@ export default function SetupPage() {
                   onGenModel={handleGenModel}
                   onCustomize={() => { setExpanded(true); setTop('custom'); }}
                 />
-              </section>
+              </div>
+            </section>
 
-              {/* ---- Transcription ---- */}
-              <section id="transcription">
-                <SectionEyebrow label="Transcription" />
-                <h2 className="text-[21px] font-semibold tracking-tight text-text-primary mt-[7px] mb-4">
-                  Whisper model
-                </h2>
+            {/* ---- Transcription ---- */}
+            <section id="transcription">
+              <SectionHeader eyebrow="Transcription" title="Whisper model" />
+              <div className="mt-4">
                 <TranscriptionSection whisper={whisper} onSetWhisper={setWhisper} />
-              </section>
+              </div>
+            </section>
 
-              {/* ---- API Keys (conditional) ---- */}
-              {showKeyCard && (
-                <section id="apikeys">
-                  <SectionEyebrow label="API keys" />
-                  <h2 className="text-[21px] font-semibold tracking-tight text-text-primary mt-[7px] mb-4">
-                    API keys
-                  </h2>
+            {/* ---- API Keys (conditional) ---- */}
+            {showKeyCard && (
+              <section id="apikeys">
+                <SectionHeader eyebrow="API keys" title="API keys" />
+                <div className="mt-4">
                   <ApiKeysSection
                     neededProviders={neededProviders}
                     keys={keys}
@@ -568,76 +495,62 @@ export default function SetupPage() {
                     onSetKey={(prov, val) => setKeys((k) => ({ ...k, [prov]: val }))}
                     onToggleShowKey={(prov) => setShowKey((s) => ({ ...s, [prov]: !s[prov] }))}
                   />
-                </section>
-              )}
+                </div>
+              </section>
+            )}
 
-              {/* ---- Readiness ---- */}
-              <section id="readiness">
-                <SectionEyebrow label="Readiness" />
-                <h2 className="text-[21px] font-semibold tracking-tight text-text-primary mt-[7px] mb-4">
-                  System check
-                </h2>
+            {/* ---- Readiness ---- */}
+            <section id="readiness">
+              <SectionHeader eyebrow="Readiness" title="System check" />
+              <div className="mt-4">
                 <ReadinessSection
                   checkRows={checkRows}
                   checkState={checkState}
                   onRunCheck={runCheck}
                 />
-              </section>
+              </div>
+            </section>
 
-              {/* ---- Advanced ---- */}
-              <AdvancedDevMode
-                devMode={devMode}
-                onToggleDev={setDevMode}
-                advancedOpen={advancedOpen}
-                onToggleAdvanced={() => setAdvancedOpen((v) => !v)}
-              />
+            {/* ---- Advanced ---- */}
+            <AdvancedDevMode
+              devMode={devMode}
+              onToggleDev={setDevMode}
+              advancedOpen={advancedOpen}
+              onToggleAdvanced={() => setAdvancedOpen((v) => !v)}
+            />
 
-              {/* ---- Finish ---- */}
-              <section id="finish">
-                <SectionEyebrow label="Finish" />
-                <h2 className="text-[21px] font-semibold tracking-tight text-text-primary mt-[7px] mb-4">
+            {/* ---- Finish ---- */}
+            <section id="finish">
+              <SectionHeader eyebrow="Finish" title="Complete setup" />
+
+              <div className="flex flex-col gap-4 mt-4">
+                <Button variant="primary" size="lg" fullWidth disabled={!canComplete} onClick={handleComplete}>
                   Complete setup
-                </h2>
+                </Button>
 
-                <div className="flex flex-col gap-4">
-                  <button
-                    type="button"
-                    onClick={handleComplete}
-                    disabled={!canComplete}
-                    className={[
-                      'w-full py-[13px] rounded-[10px] text-[14px] font-semibold tracking-tight transition-all cursor-pointer',
-                      canComplete
-                        ? 'bg-text-primary text-bg-base hover:opacity-90'
-                        : 'bg-border-subtle text-text-faint cursor-not-allowed opacity-60',
-                    ].join(' ')}
-                  >
-                    Complete setup
-                  </button>
-
-                  {!allKeysFilled && neededProviders.length > 0 && (
-                    <p className="text-[12px] text-text-faint text-center">
-                      Add your API {neededProviders.length === 1 ? 'key' : 'keys'} above to continue.
-                    </p>
-                  )}
-                  {checkState !== 'ok' && (
-                    <p className="text-[12px] text-text-faint text-center">
-                      Run the system check above to continue.
-                    </p>
-                  )}
-                </div>
-              </section>
-            </div>
+                {!allKeysFilled && neededProviders.length > 0 && (
+                  <p className="text-[12px] text-text-faint text-center">
+                    Add your API {neededProviders.length === 1 ? 'key' : 'keys'} above to continue.
+                  </p>
+                )}
+                {checkState !== 'ok' && (
+                  <p className="text-[12px] text-text-faint text-center">
+                    Run the system check above to continue.
+                  </p>
+                )}
+              </div>
+            </section>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Confirm modal */}
-        <SetupCompleteModal
-          open={confirmOpen}
-          embedModel={embedModel}
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={handleConfirmComplete}
-        />
-      </div>
-    </CssVarsProvider>
+      {/* Confirm modal */}
+      <SetupCompleteModal
+        open={confirmOpen}
+        embedModel={embedModel}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={handleConfirmComplete}
+      />
+    </div>
   );
 }

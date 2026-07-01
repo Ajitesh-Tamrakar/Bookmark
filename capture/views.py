@@ -189,4 +189,7 @@ def capture(request):
     logger.info(f"Bookmark created for URL: {mandatory_fields['source_url']}")
     _write_capture_log(mandatory_fields, bookmark, capture_method)
 
-    return JsonResponse({"message": "Data captured successfully"}, status=200)
+    return JsonResponse(
+        {"message": "Data captured successfully", "bookmark_id": str(bookmark.id)},
+        status=200,
+    )

@@ -1,30 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { CssVarsProvider, extendTheme } from '@mui/joy/styles';
 import { Link } from 'react-router-dom';
 
-import SearchInput from '../components/search/SearchInput';
-import TagRail from '../components/search/TagRail';
-import ResultsHeader from '../components/search/ResultsHeader';
-import FallbackBanner from '../components/search/FallbackBanner';
-import ResultCard from '../components/search/ResultCard';
-import EmptyState from '../components/search/EmptyState';
-import DeleteConfirmModal from '../components/search/DeleteConfirmModal';
-
-// ---------------------------------------------------------------------------
-// Joy dark theme scoped to this page (needed for Modal/ModalDialog)
-// ---------------------------------------------------------------------------
-const darkTheme = extendTheme({
-  colorSchemes: {
-    dark: {
-      palette: {
-        background: { surface: '#161519', body: '#0a0a0b', popup: '#121116' },
-        text: { primary: '#ededee', secondary: '#c9c7d0', tertiary: '#66646e' },
-        neutral: { outlinedBorder: '#2a2930', outlinedColor: '#c9c7d0' },
-        focusVisible: 'rgba(250,250,250,0.3)',
-      },
-    },
-  },
-});
+import {
+  SearchInput,
+  TagRail,
+  ResultsHeader,
+  FallbackBanner,
+  ResultCard,
+  EmptyState,
+  DeleteConfirmModal,
+  Badge,
+  Callout,
+} from '../design-system';
 
 // Cosine distance thresholds (0 = identical, 1 = orthogonal).
 // NORMAL: good semantic match. BROAD: looser, shown in approx mode.
@@ -265,121 +252,117 @@ export default function SearchPage() {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <CssVarsProvider theme={darkTheme} defaultMode="dark">
-      <div className="min-h-screen bg-bg-base font-sans" style={{ WebkitFontSmoothing: 'antialiased' }}>
-        <div className="max-w-[840px] mx-auto px-8 pt-10 pb-[160px] box-border">
+    <div className="min-h-screen bg-bg-base font-sans" style={{ WebkitFontSmoothing: 'antialiased' }}>
+      <div className="max-w-[840px] mx-auto px-8 pt-10 pb-[160px] box-border">
 
-          {/* Top bar */}
-          <div className="flex items-center justify-between pb-6 border-b border-border-subtle">
-            <div className="flex items-center gap-[14px]">
-              <span className="w-[30px] h-[30px] rounded-[8px] bg-text-primary flex items-center justify-center flex-none mr-1">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="#0a0a0b">
-                  <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.7L5 21V4a1 1 0 0 1 1-1z" />
-                </svg>
-              </span>
-              <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">Bookmark</span>
-              <span className="text-[#3a3842] text-[15px] mx-[1px]">/</span>
-              <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">Search</span>
-              <span className="ml-1.5 font-mono text-[10px] tracking-[0.08em] uppercase text-accent-warning-text border border-[rgba(217,167,46,0.35)] bg-[rgba(217,167,46,0.06)] rounded-[5px] px-[7px] py-[2px]">
-                dev
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
-              {showPipeline && (
-                <Link
-                  to="/pipeline"
-                  className="inline-flex items-center gap-2 no-underline bg-bg-raised border border-border-default rounded-[8px] text-text-secondary font-mono text-[11.5px] tracking-[0.04em] px-3 py-[7px] cursor-pointer hover:border-border-strong hover:text-text-primary hover:bg-[#15141a] transition-all group"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                    <circle cx="5" cy="6" r="2.2" stroke="currentColor" strokeWidth="1.7" />
-                    <circle cx="19" cy="18" r="2.2" stroke="currentColor" strokeWidth="1.7" />
-                    <path d="M5 8.2v3.3a3 3 0 0 0 3 3h8.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-                  </svg>
-                  Pipeline
-                  <svg className="text-text-faint group-hover:text-text-secondary group-hover:translate-x-[2px] transition-all" width="12" height="12" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </Link>
-              )}
-              <span className="font-mono text-[11px] tracking-[0.04em] text-text-faint">
-                semantic retrieval
-              </span>
-            </div>
+        {/* Top bar */}
+        <div className="flex items-center justify-between pb-6 border-b border-border-subtle">
+          <div className="flex items-center gap-[14px]">
+            <span className="w-[30px] h-[30px] rounded-[8px] bg-text-primary flex items-center justify-center flex-none mr-1">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#0a0a0b">
+                <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.7L5 21V4a1 1 0 0 1 1-1z" />
+              </svg>
+            </span>
+            <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">Bookmark</span>
+            <span className="text-border-strong text-[15px] mx-[1px]">/</span>
+            <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">Search</span>
+            <Badge tone="warning" size="xs" className="ml-1.5 uppercase">dev</Badge>
           </div>
-
-          {/* Search input */}
-          <SearchInput
-            value={inputValue}
-            onChange={handleInput}
-            onClear={handleClear}
-            loading={loading}
-            showClear={inputValue.length > 0}
-          />
-
-          {/* Tag rail */}
-          {showRail && (
-            <TagRail
-              tags={allTags}
-              selectedTags={selectedTags}
-              onToggleTag={toggleTag}
-              onClearAll={clearAllTags}
-            />
-          )}
-
-          {/* Error banner */}
-          {error && (
-            <div className="mt-4 px-4 py-3 rounded-[10px] bg-[rgba(240,96,90,0.08)] border border-[rgba(240,96,90,0.3)] text-accent-error font-mono text-[13px]">
-              {error}
-            </div>
-          )}
-
-          {!error && (
-            <>
-              {/* Results header */}
-              {headLabel && <ResultsHeader label={headLabel} sub={headSub} />}
-
-              {/* Fallback banner (approx mode) */}
-              {showFallback && (
-                <FallbackBanner suggestedTags={fallbackSuggested} onPickTag={pickTag} />
-              )}
-
-              {/* Empty states */}
-              {emptyVariant && (
-                <EmptyState
-                  variant={emptyVariant}
-                  tagPhrase={tagPhrase}
-                  suggestedTags={noMatchSuggested}
-                  onClearAll={clearAllTags}
-                  onPickTag={pickTag}
-                />
-              )}
-
-              {/* Result cards */}
-              {!emptyVariant && items.length > 0 && (
-                <div className="flex flex-col gap-2.5">
-                  {items.map((item) => (
-                    <ResultCard
-                      key={item.id}
-                      item={item}
-                      showScore={showScore}
-                      onDelete={(id, title) => setConfirm({ id, title })}
-                      onPickTag={pickTag}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          <div className="flex items-center gap-4">
+            {showPipeline && (
+              <Link
+                to="/pipeline"
+                className="inline-flex items-center gap-2 no-underline bg-bg-raised border border-border-default rounded-[8px] text-text-secondary font-mono text-[11.5px] tracking-[0.04em] px-3 py-[7px] cursor-pointer hover:border-border-strong hover:text-text-primary hover:bg-bg-hover-strong transition-all group"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <circle cx="5" cy="6" r="2.2" stroke="currentColor" strokeWidth="1.7" />
+                  <circle cx="19" cy="18" r="2.2" stroke="currentColor" strokeWidth="1.7" />
+                  <path d="M5 8.2v3.3a3 3 0 0 0 3 3h8.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                </svg>
+                Pipeline
+                <svg className="text-text-faint group-hover:text-text-secondary group-hover:translate-x-[2px] transition-all" width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            )}
+            <span className="font-mono text-[11px] tracking-[0.04em] text-text-faint">
+              semantic retrieval
+            </span>
+          </div>
         </div>
 
-        {/* Delete confirm modal */}
-        <DeleteConfirmModal
-          open={confirm !== null}
-          title={confirm?.title || ''}
-          onCancel={() => setConfirm(null)}
-          onConfirm={handleConfirmDelete}
+        {/* Search input */}
+        <SearchInput
+          value={inputValue}
+          onChange={handleInput}
+          onClear={handleClear}
+          loading={loading}
+          showClear={inputValue.length > 0}
         />
+
+        {/* Tag rail */}
+        {showRail && (
+          <TagRail
+            tags={allTags}
+            selectedTags={selectedTags}
+            onToggleTag={toggleTag}
+            onClearAll={clearAllTags}
+          />
+        )}
+
+        {/* Error banner */}
+        {error && (
+          <Callout tone="error" className="mt-4">
+            <span className="font-mono text-[13px] text-accent-error">{error}</span>
+          </Callout>
+        )}
+
+        {!error && (
+          <>
+            {/* Results header */}
+            {headLabel && <ResultsHeader label={headLabel} sub={headSub} />}
+
+            {/* Fallback banner (approx mode) */}
+            {showFallback && (
+              <FallbackBanner suggestedTags={fallbackSuggested} onPickTag={pickTag} />
+            )}
+
+            {/* Empty states */}
+            {emptyVariant && (
+              <EmptyState
+                variant={emptyVariant}
+                tagPhrase={tagPhrase}
+                suggestedTags={noMatchSuggested}
+                onClearAll={clearAllTags}
+                onPickTag={pickTag}
+              />
+            )}
+
+            {/* Result cards */}
+            {!emptyVariant && items.length > 0 && (
+              <div className="flex flex-col gap-2.5">
+                {items.map((item) => (
+                  <ResultCard
+                    key={item.id}
+                    item={item}
+                    showScore={showScore}
+                    onDelete={(id, title) => setConfirm({ id, title })}
+                    onPickTag={pickTag}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
-    </CssVarsProvider>
+
+      {/* Delete confirm modal */}
+      <DeleteConfirmModal
+        open={confirm !== null}
+        title={confirm?.title || ''}
+        onCancel={() => setConfirm(null)}
+        onConfirm={handleConfirmDelete}
+      />
+    </div>
   );
 }

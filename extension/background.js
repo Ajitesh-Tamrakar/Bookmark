@@ -29,6 +29,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // ===========================
+// ATTACH NOTE
+// ===========================
+
+chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
+    if (message.type !== "ATTACH_NOTE") return false;
+
+    const { bookmark_id, note } = message.data || {};
+    if (!bookmark_id || !note) return false;
+
+    fetch(`http://127.0.0.1:8080/retrieve/bookmarks/${bookmark_id}/note/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note }),
+    }).catch((err) => console.error("ATTACH_NOTE failed:", err));
+
+    return false; // fire-and-forget
+});
+
+// ===========================
 // ROUTER
 // ===========================
 

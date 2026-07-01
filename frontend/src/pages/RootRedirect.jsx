@@ -18,8 +18,8 @@ export default function RootRedirect() {
 
   if (!destination) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full border-2 border-[#3a3842] border-t-[#ededee] animate-spin" />
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-border-strong border-t-text-primary animate-spin" />
       </div>
     );
   }

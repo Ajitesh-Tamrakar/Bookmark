@@ -182,6 +182,9 @@ document.addEventListener("click", (event) => {
         }
         console.groupEnd();
         bmSetState(button, response?.status === "OK" ? "saved" : "error");
+        if (response?.status === "OK") {
+            window.bmShowConfirmation(response.data?.bookmark_id);
+        }
     });
 });
 

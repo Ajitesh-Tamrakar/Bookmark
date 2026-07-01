@@ -129,6 +129,7 @@ function injectSaveButton() {
                     bmSetState(newBtn, "error");
                 } else {
                     bmSetState(newBtn, "saved");
+                    window.bmShowConfirmation(response.data?.bookmark_id);
                 }
             });
         });

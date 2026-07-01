@@ -392,6 +392,9 @@ function injectButton(post, index) {
                 error("Runtime Error:", chrome.runtime.lastError);
             }
             bmSetState(btn, response?.status === "OK" ? "saved" : "error");
+            if (response?.status === "OK") {
+                window.bmShowConfirmation(response.data?.bookmark_id);
+            }
         });
     });
 

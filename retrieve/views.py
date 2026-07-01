@@ -1,4 +1,5 @@
 import hashlib
+import json
 
 from django.http import JsonResponse
 from django.db import connection
@@ -176,3 +177,18 @@ def bookmark_delete(request, pk):
     if not deleted:
         return JsonResponse({'error': 'Not found'}, status=404)
     return JsonResponse({'status': 'deleted'})
+
+
+@csrf_exempt
+def bookmark_note(request, pk):
+    if request.method != 'PATCH':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    try:
+        body = json.loads(request.body)
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    note = body.get('note', '')
+    updated = Bookmark.objects.filter(id=pk).update(user_note=note)
+    if not updated:
+        return JsonResponse({'error': 'Not found'}, status=404)
+    return JsonResponse({'status': 'updated'})

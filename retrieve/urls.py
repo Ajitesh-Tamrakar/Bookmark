@@ -6,4 +6,5 @@ urlpatterns = [
     path('tags/', views.tags_list, name='tags_list'),
     path('bookmarks/', views.bookmarks_list, name='bookmarks_list'),
     path('bookmarks/<uuid:pk>/', views.bookmark_delete, name='bookmark_delete'),
+    path('bookmarks/<uuid:pk>/note/', views.bookmark_note, name='bookmark_note'),
 ]

@@ -25,6 +25,30 @@
   --color-accent-linkedin: #6f9fd8;
   --color-accent-pinterest: #d87a8e;
   --color-accent-tag-ai: #a99adf;
+  --color-accent-web: #88998f;
+
+  /* Design-system surface/border tokens */
+  --color-bg-panel: #0c0b0e;
+  --color-bg-panel-strong: #0a090c;
+  --color-bg-hover: #0e0d11;
+  --color-bg-hover-strong: #15141a;
+  --color-border-faint: #1f1e24;
+  --color-border-faintest: #141318;
+  --color-border-hairline: #18171c;
+  --color-switch-track-off: #2a2930;
+  --color-switch-thumb-off: #6b6973;
+
+  /* Design-system text/decoration tokens */
+  --color-text-disabled: #46444d;
+  --color-text-inverse-muted: #cfcdd6;
+  --color-text-error-muted: #b5736e;
+  --color-text-amber-muted: #9a8e68;
+  --color-text-amber-body: #c4b896;
+  --color-icon-muted: #56545d;
+  --color-dot-inactive: #33323a;
+  --color-stage-passed: #45434c;
+  --color-stage-pending: #1e1d23;
+  --color-scrollbar-track: #26252b;
 
   /* Animations */
   --animate-fade-up: fade-up 0.3s ease both;

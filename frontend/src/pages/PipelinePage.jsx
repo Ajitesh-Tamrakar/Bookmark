@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 
-import PipelineNav from '../components/pipeline/PipelineNav';
-import WorkerStatusBar from '../components/pipeline/WorkerStatusBar';
-import SummarySection from '../components/pipeline/SummarySection';
-import InFlightTable from '../components/pipeline/InFlightTable';
-import PendingTable from '../components/pipeline/PendingTable';
-import FailedTable from '../components/pipeline/FailedTable';
-import TempFolderSection from '../components/pipeline/TempFolderSection';
+import {
+  PipelineNav,
+  WorkerStatusBar,
+  SummarySection,
+  InFlightTable,
+  PendingTable,
+  FailedTable,
+  TempFolderSection,
+  Badge,
+} from '../design-system';
 
 const POLL_INTERVAL_SEC = 3;
 const STALE_THRESHOLD_SEC = 90;
@@ -190,18 +193,16 @@ export default function PipelinePage() {
             <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">
               Bookmark
             </span>
-            <span className="text-[#3a3842] text-[15px]">/</span>
+            <span className="text-border-strong text-[15px]">/</span>
             <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">
               Pipeline
             </span>
-            <span className="font-mono text-[10px] tracking-[0.08em] uppercase text-accent-warning-text border border-accent-warning/35 bg-accent-warning/6 rounded-[5px] px-[7px] py-[2px] ml-[6px]">
-              dev
-            </span>
+            <Badge tone="warning" size="xs" className="ml-[6px] uppercase">dev</Badge>
           </div>
           <div className="flex items-center gap-4">
             <Link
               to="/search"
-              className="group inline-flex items-center gap-2 bg-[#0e0d11] border border-border-default rounded-lg text-text-secondary font-mono text-[11.5px] tracking-[0.04em] px-3 py-[7px] no-underline transition-all hover:border-border-strong hover:text-text-primary hover:bg-[#15141a]"
+              className="group inline-flex items-center gap-2 bg-bg-hover border border-border-default rounded-lg text-text-secondary font-mono text-[11.5px] tracking-[0.04em] px-3 py-[7px] no-underline transition-all hover:border-border-strong hover:text-text-primary hover:bg-bg-hover-strong"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="shrink-0">
                 <circle cx="11" cy="11" r="6.4" stroke="currentColor" strokeWidth="1.7" />

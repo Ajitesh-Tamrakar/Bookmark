@@ -53,6 +53,7 @@ class Bookmark(models.Model):
     saved_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)
     platform_metadata = models.JSONField(null=True, blank=True)
+    user_note = models.TextField(null=True, blank=True)
 
     class Meta:
         db_table = 'bookmarks'
