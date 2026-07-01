@@ -10,7 +10,7 @@ export default function Switch({ checked, onChange, disabled = false, className 
       onClick={() => onChange?.(!checked)}
       className={cn(
         'relative w-9 h-[21px] rounded-full cursor-pointer border transition-all p-0 disabled:opacity-50 disabled:cursor-not-allowed',
-        checked ? 'bg-text-primary border-border-strong' : 'bg-bg-sunken border-switch-track-off',
+        checked ? 'bg-text-primary border-border-strong' : 'bg-switch-track-off border-transparent',
         className
       )}
     >
