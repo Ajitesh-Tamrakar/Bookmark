@@ -181,9 +181,18 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId !== "bookmark-save-web") return;
-    chrome.tabs.sendMessage(tab.id, {
-        type: "CAPTURE_WEB",
-        selectionText: info.selectionText || null,
+
+    chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 80 }, (dataUrl) => {
+        if (chrome.runtime.lastError) {
+            // C5: capture can legitimately fail (disallowed page type, rate limit). Not an
+            // error worth surfacing to the user — just proceed without a screenshot.
+            dataUrl = null;
+        }
+        chrome.tabs.sendMessage(tab.id, {
+            type: "CAPTURE_WEB",
+            selectionText: info.selectionText || null,
+            screenshot_base64: dataUrl || null,
+        });
     });
 });
 

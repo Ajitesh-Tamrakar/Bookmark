@@ -35,7 +35,7 @@ function findEmbeddedVideo() {
   return null;
 }
 
-function extractWebPage(selectionText) {
+function extractWebPage(selectionText, screenshotBase64) {
   const docClone = document.cloneNode(true);
   const article = new Readability(docClone).parse(); // may return null on non-article pages
 
@@ -68,13 +68,14 @@ function extractWebPage(selectionText) {
       lead_image_url:     findLeadImage(imageSearchRoot),
       embedded_video_url: findEmbeddedVideo(),
       highlighted_text:   selectionText || null,
+      screenshot_base64:  screenshotBase64 || null,
     },
   };
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type !== "CAPTURE_WEB") return;
-  const payload = extractWebPage(message.selectionText);
+  const payload = extractWebPage(message.selectionText, message.screenshot_base64);
   chrome.runtime.sendMessage({ type: "SAVE", data: payload }, (response) => {
     if (response?.status === "OK") {
       window.bmShowConfirmation(response.data?.bookmark_id);
