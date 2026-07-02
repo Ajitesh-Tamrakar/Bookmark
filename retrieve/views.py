@@ -62,6 +62,9 @@ def _serialize(b, tags, extra=None):
         'saved_at': b['saved_at'].isoformat() if b['saved_at'] else None,
         'tags': tags,
     }
+    highlighted = (b.get('platform_metadata') or {}).get('highlighted_text')
+    if highlighted:
+        out['highlighted_text'] = highlighted   # C1: only this one field, never the full dict
     if extra:
         out.update(extra)
     return out
@@ -113,7 +116,7 @@ def search(request):
         b_map = {
             str(b['id']): b
             for b in Bookmark.objects.filter(id__in=bid_list)
-            .values('id', 'title', 'url', 'platform', 'author', 'saved_at')
+            .values('id', 'title', 'url', 'platform', 'author', 'saved_at', 'platform_metadata')
         }
         tag_map = _fetch_tags(bid_list)
 
@@ -158,9 +161,9 @@ def bookmarks_list(request):
         else:
             for t in tag_list:
                 qs = qs.filter(bookmarktag__tag__name=t)
-        bookmarks = list(qs.values('id', 'title', 'url', 'platform', 'author', 'saved_at'))
+        bookmarks = list(qs.values('id', 'title', 'url', 'platform', 'author', 'saved_at', 'platform_metadata'))
     else:
-        bookmarks = list(qs[:20].values('id', 'title', 'url', 'platform', 'author', 'saved_at'))
+        bookmarks = list(qs[:20].values('id', 'title', 'url', 'platform', 'author', 'saved_at', 'platform_metadata'))
 
     bid_list = [str(b['id']) for b in bookmarks]
     tag_map = _fetch_tags(bid_list)

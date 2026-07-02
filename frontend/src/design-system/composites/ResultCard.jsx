@@ -51,6 +51,11 @@ function openUrl(item) {
     const sep = item.url.includes('?') ? '&' : '?';
     return `${item.url}${sep}t=${item.timestamp_seconds}`;
   }
+  if (item.highlighted_text) {
+    const [base, existingFragment] = item.url.split('#');
+    const fragmentPrefix = existingFragment ? `${existingFragment}:~:text=` : ':~:text=';
+    return `${base}#${fragmentPrefix}${encodeURIComponent(item.highlighted_text)}`;
+  }
   return item.url;
 }
 

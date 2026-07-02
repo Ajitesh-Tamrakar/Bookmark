@@ -1,4 +1,4 @@
-__pycache__
+Reason 2: Roku Gains Content Strength__pycache__
 .env
 venv
 .vscode/
@@ -18,4 +18,5 @@ metrics/
 ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
-.design-sync/node_modules
+.design-sync/
+__pycache__/
