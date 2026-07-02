@@ -35,19 +35,24 @@ function findEmbeddedVideo() {
   return null;
 }
 
-function extractWebPage() {
+function extractWebPage(selectionText) {
   const docClone = document.cloneNode(true);
   const article = new Readability(docClone).parse(); // may return null on non-article pages
 
-  let text, title, author;
+  let text, title, author, imageSearchRoot;
   if (article) {
     text   = article.textContent;
     title  = article.title;
     author = article.byline ?? null;
+    // Scope image search to the article Readability identified, not the whole page.
+    // article.content is an HTML string, not a DOM node — parse it to get one.
+    const articleDoc = new DOMParser().parseFromString(article.content, "text/html");
+    imageSearchRoot = articleDoc.body;
   } else {
     text   = document.body.innerText; // C5: fallback when Readability can't parse
     title  = document.title;
     author = null;
+    imageSearchRoot = docClone;
   }
 
   return {
@@ -60,15 +65,16 @@ function extractWebPage() {
       text_content:       (text ?? "").trim(),
       title,
       author,
-      lead_image_url:     findLeadImage(docClone),
+      lead_image_url:     findLeadImage(imageSearchRoot),
       embedded_video_url: findEmbeddedVideo(),
+      highlighted_text:   selectionText || null,
     },
   };
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type !== "CAPTURE_WEB") return;
-  const payload = extractWebPage();
+  const payload = extractWebPage(message.selectionText);
   chrome.runtime.sendMessage({ type: "SAVE", data: payload }, (response) => {
     if (response?.status === "OK") {
       window.bmShowConfirmation(response.data?.bookmark_id);

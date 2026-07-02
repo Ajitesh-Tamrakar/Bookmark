@@ -175,13 +175,16 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
         id:       "bookmark-save-web",
         title:    "Save to Bookmark",
-        contexts: ["page"],
+        contexts: ["page", "selection"],
     });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (info.menuItemId !== "bookmark-save-web") return;
-    chrome.tabs.sendMessage(tab.id, { type: "CAPTURE_WEB" });
+    chrome.tabs.sendMessage(tab.id, {
+        type: "CAPTURE_WEB",
+        selectionText: info.selectionText || null,
+    });
 });
 
 // ===========================
