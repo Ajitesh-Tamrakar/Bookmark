@@ -5,9 +5,9 @@ import logging
 from ollama import embed
 from process.ollama_chats import generate_tags_for_chunk, generate_hierarchical_tags
 from process.helper_function import normalize_tag
-from process.image_description import IMAGE_LEAVES
+from process.image_description import IMAGE_LEAVES, SCREENSHOT_LEAVES
 from process.video_extraction import VIDEO_LEAVES
-from process.chunk_builders import chunk_text, chunk_image, VIDEO_CHUNK_LEAVES
+from process.chunk_builders import chunk_text, chunk_image, chunk_highlight, chunk_screenshot, VIDEO_CHUNK_LEAVES
 logger = logging.getLogger(__name__)
 
 
@@ -16,6 +16,8 @@ def extraction(bookmark):
     errors = []
 
     # has_text has no leaf. raw_text["text"] is already final from capture time.
+    # has_highlight has no leaf either. highlighted_text is already final from capture time
+    # (stored in platform_metadata, not raw_text).
 
     if bookmark.has_image:
         leaf = IMAGE_LEAVES.get(bookmark.platform)
@@ -34,6 +36,15 @@ def extraction(bookmark):
             result = leaf(bookmark)
             if result['status'] == 'failed':
                 errors.append(f"video: {result['error']}")
+
+    if bookmark.has_screenshot:
+        leaf = SCREENSHOT_LEAVES.get(bookmark.platform)
+        if leaf is None:
+            errors.append(f"screenshot: no extractor registered for platform '{bookmark.platform}'")
+        else:
+            result = leaf(bookmark)
+            if result['status'] == 'failed':
+                errors.append(f"screenshot: {result['error']}")
 
     if errors:
         return {'stage': 'extraction', 'status': 'failed', 'error': '; '.join(errors)}
@@ -107,6 +118,16 @@ def chunking(bookmark):
             result = leaf(bookmark)
             if result['status'] == 'failed':
                 errors.append(f"video: {result['error']}")
+
+    if bookmark.has_highlight:
+        result = chunk_highlight(bookmark)
+        if result['status'] == 'failed':
+            errors.append(f"highlight: {result['error']}")
+
+    if bookmark.has_screenshot:
+        result = chunk_screenshot(bookmark)
+        if result['status'] == 'failed':
+            errors.append(f"screenshot: {result['error']}")
 
     if errors:
         return {'stage': 'chunking', 'status': 'failed', 'error': '; '.join(errors)}

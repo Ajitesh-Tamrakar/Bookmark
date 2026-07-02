@@ -40,10 +40,11 @@ def normalize_tag(tag: str) -> str:
 def raw_text_payload(bookmark):
     payload = bookmark.raw_text or {}
     if not isinstance(payload, dict):
-        payload = {"text": payload, "image": None, "video": None}
+        payload = {"text": payload, "image": None, "video": None, "screenshot": None}
     payload.setdefault("text", None)
     payload.setdefault("image", None)
     payload.setdefault("video", None)
+    payload.setdefault("screenshot", None)
     return payload
 
 

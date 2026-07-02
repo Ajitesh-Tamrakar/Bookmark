@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def _base_raw_text(text_content):
-    return {"text": text_content, "image": None, "video": None}
+    return {"text": text_content, "image": None, "video": None, "screenshot": None}
 
 
 def _youtube_fields(psd):
@@ -64,12 +64,14 @@ def _linkedin_fields(psd):
 def _web_fields(psd):
     text = psd.get("text_content")
     return {
-        "has_text":     bool(text),
-        "has_image":    bool(psd.get("lead_image_url")),
-        "has_video":    bool(psd.get("embedded_video_url")),
-        "title":        psd.get("title"),
-        "author":       psd.get("author"),
-        "text_content": text,
+        "has_text":       bool(text),
+        "has_image":      bool(psd.get("lead_image_url")),
+        "has_video":      bool(psd.get("embedded_video_url")),
+        "has_highlight":  bool(psd.get("highlighted_text")),
+        "has_screenshot": bool(psd.get("screenshot_base64")),
+        "title":          psd.get("title"),
+        "author":         psd.get("author"),
+        "text_content":   text,
     }
 
 
@@ -178,6 +180,8 @@ def capture(request):
             has_text=fields["has_text"],
             has_image=fields["has_image"],
             has_video=fields["has_video"],
+            has_highlight=fields.get("has_highlight", False),
+            has_screenshot=fields.get("has_screenshot", False),
             author=fields["author"],
             raw_text=_base_raw_text(fields["text_content"]),
             platform_metadata=psd,

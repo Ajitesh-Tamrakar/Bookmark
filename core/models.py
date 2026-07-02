@@ -40,6 +40,8 @@ class Bookmark(models.Model):
     has_text = models.BooleanField(default=False)
     has_image = models.BooleanField(default=False)
     has_video = models.BooleanField(default=False)
+    has_highlight = models.BooleanField(default=False)
+    has_screenshot = models.BooleanField(default=False)
     processing_status = models.CharField(max_length=50, choices=Processing_Status.choices, default=Processing_Status.PENDING)
     processing_error = models.TextField(null=True, blank=True)
     retry_count = models.IntegerField(default=0)
@@ -85,12 +87,14 @@ class BookmarkTag(models.Model):
 
 class Chunk(models.Model):
     class ChunkType(models.TextChoices):
-        ARTICLE = 'article', 'Article'
-        VIDEO   = 'video',   'Video'
-        AUDIO   = 'audio',   'Audio'
-        IMAGE   = 'image',   'Image'
-        POST    = 'post',    'Post'
-        NOTE    = 'note',    'Note'
+        ARTICLE    = 'article',    'Article'
+        VIDEO      = 'video',      'Video'
+        AUDIO      = 'audio',      'Audio'
+        IMAGE      = 'image',      'Image'
+        POST       = 'post',       'Post'
+        HIGHLIGHT  = 'highlight',  'Highlight'
+        SCREENSHOT = 'screenshot', 'Screenshot'
+        NOTE       = 'note',       'Note'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False )
     bookmark = models.ForeignKey('Bookmark', on_delete=models.CASCADE, db_column='bookmark_id')

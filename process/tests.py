@@ -1,10 +1,14 @@
+import base64
+import os
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from django.test import SimpleTestCase
 
 from core.models import Bookmark
-from process.image_description import extract_image
+from process.image_description import extract_image, extract_screenshot
+from process.media_download import decode_base64_image
 from process.pipeline import chunking
 from process.video_extraction import extract_video_twitter, extract_video_youtube
 
@@ -21,7 +25,9 @@ def _bookmark(**overrides):
         "has_text": False,
         "has_image": False,
         "has_video": False,
-        "raw_text": {"text": None, "image": None, "video": None},
+        "has_highlight": False,
+        "has_screenshot": False,
+        "raw_text": {"text": None, "image": None, "video": None, "screenshot": None},
         "platform_metadata": {},
         "refresh_from_db": Mock(),
     }
@@ -102,6 +108,55 @@ class ChunkingTests(SimpleTestCase):
         self.assertEqual(result["status"], "failed")
         self.assertIn("no chunker registered for platform 'web'", result["error"])
         create_chunk.assert_not_called()
+
+    def test_highlight_bookmark_creates_highlight_chunk(self):
+        bookmark = _bookmark(
+            url="https://example.com/article",
+            platform=Bookmark.Platform.WEB,
+            has_highlight=True,
+            platform_metadata={"highlighted_text": "a selected passage"},
+        )
+
+        with patch("process.chunk_builders.Chunk.objects.create") as create_chunk:
+            result = chunking(bookmark)
+
+        self.assertEqual(result, {'stage': 'chunking', 'status': 'success', 'error': ''})
+        create_chunk.assert_called_once()
+        self.assertEqual(create_chunk.call_args.kwargs["text"], "a selected passage")
+        self.assertEqual(create_chunk.call_args.kwargs["chunk_type"], "highlight")
+        self.assertEqual(create_chunk.call_args.kwargs["chunk_index"], 0)
+        self.assertIsNone(create_chunk.call_args.kwargs["timestamp_seconds"])
+
+    def test_highlight_bookmark_with_missing_text_creates_zero_chunks(self):
+        bookmark = _bookmark(
+            url="https://example.com/article",
+            platform=Bookmark.Platform.WEB,
+            has_highlight=True,
+            platform_metadata={},
+        )
+
+        with patch("process.chunk_builders.Chunk.objects.create") as create_chunk:
+            result = chunking(bookmark)
+
+        self.assertEqual(result, {'stage': 'chunking', 'status': 'success', 'error': ''})
+        create_chunk.assert_not_called()
+
+    def test_screenshot_bookmark_creates_screenshot_chunk(self):
+        bookmark = _bookmark(
+            url="https://example.com/article",
+            platform=Bookmark.Platform.WEB,
+            has_screenshot=True,
+            raw_text={"text": None, "image": None, "video": None, "screenshot": "a landing page vibe"},
+        )
+
+        with patch("process.chunk_builders.Chunk.objects.create") as create_chunk:
+            result = chunking(bookmark)
+
+        self.assertEqual(result, {'stage': 'chunking', 'status': 'success', 'error': ''})
+        create_chunk.assert_called_once()
+        self.assertEqual(create_chunk.call_args.kwargs["text"], "a landing page vibe")
+        self.assertEqual(create_chunk.call_args.kwargs["chunk_type"], "screenshot")
+        self.assertEqual(create_chunk.call_args.kwargs["chunk_index"], 0)
 
 
 class ExtractionImageTests(SimpleTestCase):
@@ -284,3 +339,82 @@ class ExtractionVideoTests(SimpleTestCase):
         self.assertIn('video download failed', result['error'])
         self.assertIn('network error', result['error'])
         mock_cleanup.assert_called_once()
+
+
+class DecodeBase64ImageTests(SimpleTestCase):
+
+    def test_strips_data_uri_prefix_and_writes_valid_bytes(self):
+        raw_bytes = b'not-really-a-jpeg-but-fine-for-this-test'
+        encoded = base64.b64encode(raw_bytes).decode('ascii')
+        data_uri = f'data:image/jpeg;base64,{encoded}'
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest_path = os.path.join(tmp_dir, 'screenshot.jpg')
+            result = decode_base64_image(data_uri, dest_path)
+
+            self.assertEqual(result, {'status': 'success', 'error': ''})
+            with open(dest_path, 'rb') as f:
+                self.assertEqual(f.read(), raw_bytes)
+
+    def test_accepts_bare_base64_string_without_prefix(self):
+        raw_bytes = b'bare-base64-no-prefix'
+        encoded = base64.b64encode(raw_bytes).decode('ascii')
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dest_path = os.path.join(tmp_dir, 'screenshot.jpg')
+            result = decode_base64_image(encoded, dest_path)
+
+            self.assertEqual(result, {'status': 'success', 'error': ''})
+            with open(dest_path, 'rb') as f:
+                self.assertEqual(f.read(), raw_bytes)
+
+
+class ExtractionScreenshotTests(SimpleTestCase):
+
+    def _screenshot_bookmark(self, metadata=None):
+        return _bookmark(
+            platform=Bookmark.Platform.WEB,
+            has_screenshot=True,
+            platform_metadata=metadata if metadata is not None else {'screenshot_base64': 'data:image/jpeg;base64,abc123'},
+        )
+
+    @patch('process.image_description.cleanup_temp_file')
+    @patch('process.image_description.temp_file_path', return_value='/tmp/test_screenshot.jpg')
+    @patch('process.image_description.update_raw_text_key')
+    @patch('process.image_description.analyze_image', return_value='A serious long-form article layout')
+    @patch('process.image_description.decode_base64_image', return_value={'status': 'success', 'error': ''})
+    def test_successful_screenshot_description_is_written(self, mock_decode, mock_vlm, mock_update, mock_path, mock_cleanup):
+        bookmark = self._screenshot_bookmark()
+        result = extract_screenshot(bookmark)
+        self.assertEqual(result, {'status': 'success', 'error': ''})
+        mock_update.assert_called_once_with(bookmark, 'screenshot', 'A serious long-form article layout')
+        mock_cleanup.assert_called_once_with('/tmp/test_screenshot.jpg')
+
+    @patch('process.image_description.cleanup_temp_file')
+    @patch('process.image_description.temp_file_path', return_value='/tmp/test_screenshot.jpg')
+    @patch('process.image_description.decode_base64_image', return_value={'status': 'failed', 'error': 'bad base64'})
+    def test_decode_failure_returns_explicit_failed(self, mock_decode, mock_path, mock_cleanup):
+        bookmark = self._screenshot_bookmark()
+        result = extract_screenshot(bookmark)
+        self.assertEqual(result['status'], 'failed')
+        self.assertIn('decode failed', result['error'])
+        self.assertIn('bad base64', result['error'])
+        mock_cleanup.assert_called_once()
+
+    @patch('process.image_description.cleanup_temp_file')
+    @patch('process.image_description.temp_file_path', return_value='/tmp/test_screenshot.jpg')
+    @patch('process.image_description.update_raw_text_key')
+    @patch('process.image_description.analyze_image', return_value=None)
+    @patch('process.image_description.decode_base64_image', return_value={'status': 'success', 'error': ''})
+    def test_vlm_returns_nothing_is_explicit_failed_not_none_write(self, mock_decode, mock_vlm, mock_update, mock_path, mock_cleanup):
+        bookmark = self._screenshot_bookmark()
+        result = extract_screenshot(bookmark)
+        self.assertEqual(result['status'], 'failed')
+        self.assertIn('VLM returned no description', result['error'])
+        mock_update.assert_not_called()
+
+    def test_missing_screenshot_base64_in_metadata_returns_failed(self):
+        bookmark = self._screenshot_bookmark(metadata={})
+        result = extract_screenshot(bookmark)
+        self.assertEqual(result['status'], 'failed')
+        self.assertIn('no screenshot_base64 found in platform_metadata', result['error'])

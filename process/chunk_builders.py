@@ -53,6 +53,42 @@ def chunk_image(bookmark):
         return _failure(e)
 
 
+def chunk_highlight(bookmark):
+    try:
+        text = (bookmark.platform_metadata or {}).get("highlighted_text")
+        if not text:
+            return _success()
+        Chunk.objects.create(
+            bookmark=bookmark,
+            text=text,
+            chunk_type=Chunk.ChunkType.HIGHLIGHT,
+            chunk_index=0,
+            timestamp_seconds=None,
+            word_count=_word_count(text),
+        )
+        return _success()
+    except Exception as e:
+        return _failure(e)
+
+
+def chunk_screenshot(bookmark):
+    try:
+        text = (bookmark.raw_text or {}).get("screenshot")
+        if not text:
+            return _success()
+        Chunk.objects.create(
+            bookmark=bookmark,
+            text=text,
+            chunk_type=Chunk.ChunkType.SCREENSHOT,
+            chunk_index=0,
+            timestamp_seconds=None,
+            word_count=_word_count(text),
+        )
+        return _success()
+    except Exception as e:
+        return _failure(e)
+
+
 def chunk_video_youtube(bookmark):
     try:
         video = (bookmark.raw_text or {}).get("video")

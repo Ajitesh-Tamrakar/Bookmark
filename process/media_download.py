@@ -1,5 +1,7 @@
+import base64
 import glob
 import os
+import re
 
 import requests
 import yt_dlp
@@ -13,6 +15,19 @@ def download_image(url, dest_path):
         response.raise_for_status()
         with open(dest_path, 'wb') as f:
             f.write(response.content)
+        return {'status': 'success', 'error': ''}
+    except Exception as e:
+        return {'status': 'failed', 'error': str(e)}
+
+
+def decode_base64_image(data_uri, dest_path):
+    try:
+        if os.path.exists(dest_path):
+            os.remove(dest_path)
+        match = re.match(r'^data:image/\w+;base64,(.+)$', data_uri, re.DOTALL)
+        raw_b64 = match.group(1) if match else data_uri  # tolerate a bare base64 string too
+        with open(dest_path, 'wb') as f:
+            f.write(base64.b64decode(raw_b64))
         return {'status': 'success', 'error': ''}
     except Exception as e:
         return {'status': 'failed', 'error': str(e)}
