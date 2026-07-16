@@ -79,6 +79,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   chrome.runtime.sendMessage({ type: "SAVE", data: payload }, (response) => {
     if (response?.status === "OK") {
       window.bmShowConfirmation(response.data?.bookmark_id);
+    } else if (response?.setupRequired) {
+      window.bmShowSetupRequired(response.message);
     }
     sendResponse(response);
   });

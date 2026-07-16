@@ -1,5 +1,6 @@
 (function () {
     const AUTO_DISMISS_MS = 3000;
+    const SETUP_REQUIRED_DISMISS_MS = 5000;
     const PANEL_SWAP_MS = 280;
 
     let overlayEl = null;
@@ -48,6 +49,20 @@
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </button>
                     </div>
+                </div>
+            </div>
+            <div class="bm-panel" data-panel="setup-required">
+                <div class="conf-inner">
+                    <div class="conf-head">
+                        <svg width="14" height="14" viewBox="0 0 24 24" style="flex:0 0 auto">
+                            <path d="M12 2L1 21h22L12 2z" fill="none" stroke="#e5484d" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 9v5" stroke="#e5484d" stroke-width="1.8" stroke-linecap="round"/>
+                            <circle cx="12" cy="17" r="1" fill="#e5484d"/>
+                        </svg>
+                        <span class="conf-title">Setup required</span>
+                        <button class="bm-close" type="button" aria-label="Dismiss">×</button>
+                    </div>
+                    <div class="setup-msg"></div>
                 </div>
             </div>
         `;
@@ -173,5 +188,26 @@
             hideTimer = null;
             dismiss(toast);
         }, AUTO_DISMISS_MS);
+    };
+
+    window.bmShowSetupRequired = function (message) {
+        currentBookmarkId = null;
+        const toast = getOverlay();
+
+        toast.querySelector(".setup-msg").textContent =
+            message || "Please complete setup to get started";
+
+        toast.querySelectorAll(".bm-panel").forEach((p) => {
+            p.classList.toggle("bm-active", p.dataset.panel === "setup-required");
+        });
+        toast.style.height = "";
+
+        toast.classList.add("bm-open");
+
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+            hideTimer = null;
+            dismiss(toast);
+        }, SETUP_REQUIRED_DISMISS_MS);
     };
 })();

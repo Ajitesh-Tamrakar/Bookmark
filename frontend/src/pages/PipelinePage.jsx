@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 
+import { redirectIfSetupRequired } from '../utils/setupGuard';
 import {
   PipelineNav,
   WorkerStatusBar,
@@ -60,8 +61,10 @@ function useDevModeGuard() {
 // ---------------------------------------------------------------------------
 export default function PipelinePage() {
   const devGuard = useDevModeGuard();
+  const navigate = useNavigate();
 
   const [data, setData] = useState(null);
+  const [redirecting, setRedirecting] = useState(false);
   const [clock, setClock] = useState(Date.now());
   const [lastRefresh, setLastRefresh] = useState(Date.now());
   const [polling, setPolling] = useState(true);
@@ -74,8 +77,15 @@ export default function PipelinePage() {
   const fetchStatus = async () => {
     try {
       const res = await fetch('/pipeline/status/');
-      if (!res.ok) return;
       const json = await res.json();
+      if (!res.ok) {
+        if (redirectIfSetupRequired(res, json, navigate)) {
+          setRedirecting(true);
+          setPolling(false);
+          if (pollRef.current) clearInterval(pollRef.current);
+        }
+        return;
+      }
       setData(json);
       setLastRefresh(Date.now());
     } catch {
@@ -125,7 +135,11 @@ export default function PipelinePage() {
 
   const handleRetry = async (id) => {
     try {
-      await fetch(`/pipeline/retry/${id}/`, { method: 'POST' });
+      const res = await fetch(`/pipeline/retry/${id}/`, { method: 'POST' });
+      if (!res.ok) {
+        const json = await res.json();
+        if (redirectIfSetupRequired(res, json, navigate)) return;
+      }
       fetchStatus();
     } catch {
       // best-effort
@@ -135,6 +149,21 @@ export default function PipelinePage() {
   // ---------------------------------------------------------------------------
   // Guard states
   // ---------------------------------------------------------------------------
+  if (redirecting) {
+    return (
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <div className="text-text-secondary font-mono text-[13px] text-center">
+          Redirecting to setup…
+          <br />
+          <Link to="/setup" className="underline text-text-primary">
+            Click here
+          </Link>{' '}
+          if you are not redirected automatically.
+        </div>
+      </div>
+    );
+  }
+
   if (devGuard === 'loading' || (devGuard === 'allowed' && !data)) {
     return (
       <div className="min-h-screen bg-bg-base flex items-center justify-center">

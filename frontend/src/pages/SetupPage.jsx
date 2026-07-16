@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import {
   SetupNav,
@@ -13,6 +14,7 @@ import {
   SetupDoneScreen,
   SectionHeader,
   Button,
+  Callout,
 } from '../design-system';
 
 // ---------------------------------------------------------------------------
@@ -35,6 +37,9 @@ const WHISPER_SIZES = { tiny: 39, base: 74, small: 244, medium: 769, large: 1536
 // SetupPage
 // ---------------------------------------------------------------------------
 export default function SetupPage() {
+  const location = useLocation();
+  const redirectMessage = location.state?.message;
+
   // --- state ---
   const [top, setTop] = useState('ollama');
   const [expanded, setExpanded] = useState(false);
@@ -422,124 +427,131 @@ export default function SetupPage() {
           devMode={devMode}
         />
       ) : (
-        <div className="flex gap-[60px] w-full max-w-[1020px] mx-auto px-8 py-[72px] pb-[200px] items-start">
-          <SetupNav items={navItems} activeSection={activeSection} />
+        <div className="flex flex-col w-full max-w-[1020px] mx-auto px-8 pt-[72px]">
+          {redirectMessage && (
+            <Callout tone="warning" className="mb-8">
+              <span className="font-mono text-[13px]">{redirectMessage}</span>
+            </Callout>
+          )}
+          <div className="flex gap-[60px] pb-[200px] items-start">
+            <SetupNav items={navItems} activeSection={activeSection} />
 
-          <div className="flex-1 min-w-0 flex flex-col gap-[52px]">
-            {/* ---- Welcome ---- */}
-            <section id="welcome">
-              <SectionHeader
-                eyebrow="Bookmark"
-                title="Welcome"
-                description="This wizard configures your local AI pipeline. All models run on your machine unless you choose a hosted provider. You'll only need to do this once."
-                className="max-w-[520px]"
-              />
-            </section>
-
-            {/* ---- Provider ---- */}
-            <section id="provider">
-              <SectionHeader eyebrow="Provider" title="Choose your provider" />
-              <div className="mt-4">
-                <ProviderToggle top={top} onSetTop={handleSetTop} />
-              </div>
-            </section>
-
-            {/* ---- Embedding ---- */}
-            <section id="embedding">
-              <SectionHeader eyebrow="Embedding" eyebrowTag="permanent" title="Embedding model" />
-              <div className="mt-4">
-                <EmbeddingSection
-                  expanded={expanded}
-                  embedProvider={embedProvider}
-                  embedModel={embedModel}
-                  onEmbedProvider={handleEmbedProvider}
-                  onEmbedModel={handleEmbedModel}
-                  onCustomize={() => { setExpanded(true); setTop('custom'); }}
-                  onToggleExpanded={() => setExpanded((v) => !v)}
+            <div className="flex-1 min-w-0 flex flex-col gap-[52px]">
+              {/* ---- Welcome ---- */}
+              <section id="welcome">
+                <SectionHeader
+                  eyebrow="Bookmark"
+                  title="Welcome"
+                  description="This wizard configures your local AI pipeline. All models run on your machine unless you choose a hosted provider. You'll only need to do this once."
+                  className="max-w-[520px]"
                 />
-              </div>
-            </section>
+              </section>
 
-            {/* ---- Generation ---- */}
-            <section id="generation">
-              <SectionHeader eyebrow="Generation" title="Generation model" />
-              <div className="mt-4">
-                <GenerationSection
-                  expanded={expanded}
-                  genProvider={genProvider}
-                  genModel={genModel}
-                  onGenProvider={handleGenProvider}
-                  onGenModel={handleGenModel}
-                  onCustomize={() => { setExpanded(true); setTop('custom'); }}
-                />
-              </div>
-            </section>
-
-            {/* ---- Transcription ---- */}
-            <section id="transcription">
-              <SectionHeader eyebrow="Transcription" title="Whisper model" />
-              <div className="mt-4">
-                <TranscriptionSection whisper={whisper} onSetWhisper={setWhisper} />
-              </div>
-            </section>
-
-            {/* ---- API Keys (conditional) ---- */}
-            {showKeyCard && (
-              <section id="apikeys">
-                <SectionHeader eyebrow="API keys" title="API keys" />
+              {/* ---- Provider ---- */}
+              <section id="provider">
+                <SectionHeader eyebrow="Provider" title="Choose your provider" />
                 <div className="mt-4">
-                  <ApiKeysSection
-                    neededProviders={neededProviders}
-                    keys={keys}
-                    showKey={showKey}
-                    onSetKey={(prov, val) => setKeys((k) => ({ ...k, [prov]: val }))}
-                    onToggleShowKey={(prov) => setShowKey((s) => ({ ...s, [prov]: !s[prov] }))}
+                  <ProviderToggle top={top} onSetTop={handleSetTop} />
+                </div>
+              </section>
+
+              {/* ---- Embedding ---- */}
+              <section id="embedding">
+                <SectionHeader eyebrow="Embedding" eyebrowTag="permanent" title="Embedding model" />
+                <div className="mt-4">
+                  <EmbeddingSection
+                    expanded={expanded}
+                    embedProvider={embedProvider}
+                    embedModel={embedModel}
+                    onEmbedProvider={handleEmbedProvider}
+                    onEmbedModel={handleEmbedModel}
+                    onCustomize={() => { setExpanded(true); setTop('custom'); }}
+                    onToggleExpanded={() => setExpanded((v) => !v)}
                   />
                 </div>
               </section>
-            )}
 
-            {/* ---- Readiness ---- */}
-            <section id="readiness">
-              <SectionHeader eyebrow="Readiness" title="System check" />
-              <div className="mt-4">
-                <ReadinessSection
-                  checkRows={checkRows}
-                  checkState={checkState}
-                  onRunCheck={runCheck}
-                />
-              </div>
-            </section>
+              {/* ---- Generation ---- */}
+              <section id="generation">
+                <SectionHeader eyebrow="Generation" title="Generation model" />
+                <div className="mt-4">
+                  <GenerationSection
+                    expanded={expanded}
+                    genProvider={genProvider}
+                    genModel={genModel}
+                    onGenProvider={handleGenProvider}
+                    onGenModel={handleGenModel}
+                    onCustomize={() => { setExpanded(true); setTop('custom'); }}
+                  />
+                </div>
+              </section>
 
-            {/* ---- Advanced ---- */}
-            <AdvancedDevMode
-              devMode={devMode}
-              onToggleDev={setDevMode}
-              advancedOpen={advancedOpen}
-              onToggleAdvanced={() => setAdvancedOpen((v) => !v)}
-            />
+              {/* ---- Transcription ---- */}
+              <section id="transcription">
+                <SectionHeader eyebrow="Transcription" title="Whisper model" />
+                <div className="mt-4">
+                  <TranscriptionSection whisper={whisper} onSetWhisper={setWhisper} />
+                </div>
+              </section>
 
-            {/* ---- Finish ---- */}
-            <section id="finish">
-              <SectionHeader eyebrow="Finish" title="Complete setup" />
+              {/* ---- API Keys (conditional) ---- */}
+              {showKeyCard && (
+                <section id="apikeys">
+                  <SectionHeader eyebrow="API keys" title="API keys" />
+                  <div className="mt-4">
+                    <ApiKeysSection
+                      neededProviders={neededProviders}
+                      keys={keys}
+                      showKey={showKey}
+                      onSetKey={(prov, val) => setKeys((k) => ({ ...k, [prov]: val }))}
+                      onToggleShowKey={(prov) => setShowKey((s) => ({ ...s, [prov]: !s[prov] }))}
+                    />
+                  </div>
+                </section>
+              )}
 
-              <div className="flex flex-col gap-4 mt-4">
-                <Button variant="primary" size="lg" fullWidth disabled={!canComplete} onClick={handleComplete}>
-                  Complete setup
-                </Button>
+              {/* ---- Readiness ---- */}
+              <section id="readiness">
+                <SectionHeader eyebrow="Readiness" title="System check" />
+                <div className="mt-4">
+                  <ReadinessSection
+                    checkRows={checkRows}
+                    checkState={checkState}
+                    onRunCheck={runCheck}
+                  />
+                </div>
+              </section>
 
-                {!allKeysFilled && neededProviders.length > 0 && (
-                  <p className="text-[12px] text-text-faint text-center">
-                    Add your API {neededProviders.length === 1 ? 'key' : 'keys'} above to continue.
-                  </p>
-                )}
-                {checkState !== 'ok' && (
-                  <p className="text-[12px] text-text-faint text-center">
-                    Run the system check above to continue.
-                  </p>
-                )}
-              </div>
-            </section>
+              {/* ---- Advanced ---- */}
+              <AdvancedDevMode
+                devMode={devMode}
+                onToggleDev={setDevMode}
+                advancedOpen={advancedOpen}
+                onToggleAdvanced={() => setAdvancedOpen((v) => !v)}
+              />
+
+              {/* ---- Finish ---- */}
+              <section id="finish">
+                <SectionHeader eyebrow="Finish" title="Complete setup" />
+
+                <div className="flex flex-col gap-4 mt-4">
+                  <Button variant="primary" size="lg" fullWidth disabled={!canComplete} onClick={handleComplete}>
+                    Complete setup
+                  </Button>
+
+                  {!allKeysFilled && neededProviders.length > 0 && (
+                    <p className="text-[12px] text-text-faint text-center">
+                      Add your API {neededProviders.length === 1 ? 'key' : 'keys'} above to continue.
+                    </p>
+                  )}
+                  {checkState !== 'ok' && (
+                    <p className="text-[12px] text-text-faint text-center">
+                      Run the system check above to continue.
+                    </p>
+                  )}
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       )}

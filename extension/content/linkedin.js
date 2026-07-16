@@ -394,6 +394,8 @@ function injectButton(post, index) {
             bmSetState(btn, response?.status === "OK" ? "saved" : "error");
             if (response?.status === "OK") {
                 window.bmShowConfirmation(response.data?.bookmark_id);
+            } else if (response?.setupRequired) {
+                window.bmShowSetupRequired(response.message);
             }
         });
     });

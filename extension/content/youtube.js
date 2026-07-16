@@ -127,6 +127,9 @@ function injectSaveButton() {
             chrome.runtime.sendMessage({ type: "SAVE", data }, (response) => {
                 if (chrome.runtime.lastError || response?.status !== "OK") {
                     bmSetState(newBtn, "error");
+                    if (response?.setupRequired) {
+                        window.bmShowSetupRequired(response.message);
+                    }
                 } else {
                     bmSetState(newBtn, "saved");
                     window.bmShowConfirmation(response.data?.bookmark_id);

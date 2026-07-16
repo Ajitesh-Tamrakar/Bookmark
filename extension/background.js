@@ -136,7 +136,13 @@ async function postJSON(url, payload, sendResponse) {
             sendResponse({ status: "OK", data });
         } else {
             console.error("Backend error:", response.status, data);
-            sendResponse({ status: "ERROR", code: response.status, error: data });
+            sendResponse({
+                status: "ERROR",
+                code: response.status,
+                error: data,
+                setupRequired: response.status === 503 && !!data?.message,
+                message: data?.message,
+            });
         }
     } catch (err) {
         console.error("postJSON failed:", err);
@@ -159,7 +165,13 @@ async function postFormData(url, formData, sendResponse) {
             sendResponse({ status: "OK", data });
         } else {
             console.error("Backend error:", response.status, data);
-            sendResponse({ status: "ERROR", code: response.status, error: data });
+            sendResponse({
+                status: "ERROR",
+                code: response.status,
+                error: data,
+                setupRequired: response.status === 503 && !!data?.message,
+                message: data?.message,
+            });
         }
     } catch (err) {
         console.error("postFormData failed:", err);

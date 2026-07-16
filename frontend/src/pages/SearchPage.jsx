@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import {
   SearchInput,
@@ -12,6 +12,7 @@ import {
   Badge,
   Callout,
 } from '../design-system';
+import { redirectIfSetupRequired } from '../utils/setupGuard';
 
 // Cosine distance thresholds (0 = identical, 1 = orthogonal).
 // NORMAL: good semantic match. BROAD: looser, shown in approx mode.
@@ -33,21 +34,25 @@ export default function SearchPage() {
   const [showPipeline, setShowPipeline] = useState(false);
 
   const debounceRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => { document.title = 'Bookmark · Search'; }, []);
 
   // Fetch tags list and pipeline visibility on mount
   useEffect(() => {
     fetch('/retrieve/tags/')
-      .then((r) => r.json())
-      .then((d) => setAllTags(d.tags || []))
+      .then(async (r) => {
+        const d = await r.json();
+        if (redirectIfSetupRequired(r, d, navigate)) return;
+        setAllTags(d.tags || []);
+      })
       .catch(() => {});
 
     fetch('/setup/status/')
       .then((r) => r.json())
       .then((d) => setShowPipeline(!!(d.dev_mode && d.setup_complete)))
       .catch(() => {});
-  }, []);
+  }, [navigate]);
 
   // ---------------------------------------------------------------------------
   // API calls — each mode hits its own endpoint, no client-side ranking
@@ -57,8 +62,11 @@ export default function SearchPage() {
     setError(null);
     try {
       const res = await fetch('/retrieve/bookmarks/');
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
+      if (!res.ok) {
+        if (redirectIfSetupRequired(res, data, navigate)) return;
+        throw new Error(data.message || `Server error ${res.status}`);
+      }
       setResults({ mode: 'recent', items: data.results || [] });
     } catch (e) {
       setError(e.message);
@@ -74,8 +82,11 @@ export default function SearchPage() {
     try {
       const params = new URLSearchParams({ tags: tagList.join(','), logic: multiTagLogic });
       const res = await fetch(`/retrieve/bookmarks/?${params}`);
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
+      if (!res.ok) {
+        if (redirectIfSetupRequired(res, data, navigate)) return;
+        throw new Error(data.message || `Server error ${res.status}`);
+      }
       setResults({ mode: 'browse', items: data.results || [] });
     } catch (e) {
       setError(e.message);
@@ -95,8 +106,11 @@ export default function SearchPage() {
         params.set('logic', multiTagLogic);
       }
       const res = await fetch(`/retrieve/search/?${params}`);
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
+      if (!res.ok) {
+        if (redirectIfSetupRequired(res, data, navigate)) return;
+        throw new Error(data.message || `Server error ${res.status}`);
+      }
 
       const items = data.results || [];
       const normal = items.filter((r) => r.distance < NORMAL_THRESHOLD);
@@ -180,7 +194,11 @@ export default function SearchPage() {
     setConfirm(null);
     try {
       const res = await fetch(`/retrieve/bookmarks/${id}/`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      if (!res.ok) {
+        const data = await res.json();
+        if (redirectIfSetupRequired(res, data, navigate)) return;
+        throw new Error(data.message || `Server error ${res.status}`);
+      }
       setResults((prev) => ({ ...prev, items: prev.items.filter((r) => r.id !== id) }));
       // Refresh tag counts after deletion
       fetch('/retrieve/tags/')
