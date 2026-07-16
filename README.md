@@ -1,234 +1,147 @@
-# Bookmark 🔖
+# Internet Expedition 🔖
 
-A self-hosted, open source browser extension that captures content from the
-web and lets you search across all of it using natural language — powered
-entirely by a local AI model running on your own machine.
+Save anything you find online — videos, posts, articles, pins — and find it
+again later just by describing what you remember about it.
 
-No cloud. No subscriptions. No data leaving your device.
+No account. No subscription. Nothing you save ever leaves your computer.
 
-> **Prototype notice:** Currently only YouTube is supported. LinkedIn,
-> Pinterest, Twitter/X, and general web capture are planned.
-
----
-
-## How it works
-
-1. Click the Bookmark button on any YouTube video
-2. Bookmark extracts the transcript and runs it through a local AI model
-3. Weeks later, search in plain language — *"that video about negotiation"*
-   — and it finds it, even if you remember nothing else about it
-
-Everything runs on your machine. Nothing is sent anywhere.
-
----
-
-## Requirements
-
-- [Docker Desktop](https://docs.docker.com/get-docker/) — the only thing you need to install manually
-- 8 GB RAM minimum, 16 GB recommended
-- Google Chrome
-
-Python, Node.js, PostgreSQL, pgvector, and Ollama are all handled inside Docker automatically.
+![Screenshot: app icon or hero banner showing the app in use](placeholder-hero.png)
 
 ---
 
 ## Installation
 
-### Linux
+You only need to install one thing: **Docker Desktop**. Everything else
+gets set up for you automatically.
 
-```bash
-git clone https://github.com/Ajitesh-Tamrakar/Bookmark.git
-cd Bookmark
-bash install.sh
-```
+### Step 1 — Install Docker Desktop
 
-This installs the `bookmark` CLI and starts all services. Then:
+Docker Desktop is a free program that lets Internet Expedition run safely on
+your computer.
 
-```bash
-bookmark start
-```
+1. Go to [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
+2. Download the version for your computer (Windows or Mac)
+3. Open the file you downloaded and follow the on-screen instructions to install it
+4. Once it's installed, open Docker Desktop and leave it running in the background
 
----
+![Screenshot: Docker Desktop download page](placeholder-docker-download.png)
 
-### macOS
+> 💡 You'll see a whale icon appear near your clock (Windows) or in your
+> menu bar (Mac) once Docker Desktop is running. That's how you know it worked.
 
-```bash
-git clone https://github.com/Ajitesh-Tamrakar/Bookmark.git
-cd Bookmark
-bash install.sh
-```
+### Step 2 — Download Internet Expedition
 
-Same as Linux — the script handles macOS differences automatically. Then:
+1. Go to the project page: `[link to your project page]`
+2. Click the green **Code** button, then click **Download ZIP**
+3. Find the ZIP file in your Downloads folder and unzip it (double-click it, or right-click and choose "Extract")
+4. You'll now have a folder called **Internet Expedition** — move it somewhere easy to find, like your Desktop
 
-```bash
-bookmark start
-```
+![Screenshot: Download ZIP button on the project page](placeholder-download-zip.png)
 
-> Make sure Docker Desktop is running before you run the script.
+### Step 3 — Start it up
 
----
+**On Windows:**
+1. Open the **Internet Expedition** folder
+2. Double-click the file called `start.bat`
+3. A black window will pop up and show some text scrolling — this is normal, just let it run
 
-### Windows
+**On Mac:**
+1. Open the **Internet Expedition** folder
+2. Double-click the file called `start.command`
+3. A window will pop up and show some text scrolling — this is normal, just let it run
 
-`bash` scripts don't run natively on Windows, so skip `install.sh` and use Docker directly.
+![Screenshot: the startup window with progress text](placeholder-startup-window.png)
 
-1. Install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/) and make sure it's running
-2. Open **PowerShell** or **Command Prompt** in the project folder
-3. Run:
+The first time you do this, it will take a few minutes — it's downloading
+everything it needs. After that, starting up will be much faster.
 
-```powershell
-git clone https://github.com/Ajitesh-Tamrakar/Bookmark.git
-cd Bookmark
-docker compose up -d --build
-```
-
-4. Open **http://localhost:8081** in Chrome once it's ready (takes a minute or two on first run)
-
-> On first run, Docker pulls all the required images. This may take several minutes depending on your connection.
+When it's done, your browser will open automatically to the app. If it
+doesn't, open Chrome and go to: **http://localhost:8081**
 
 ---
 
-## Loading the Chrome Extension
+## Getting Started
 
-After the app is running, load the browser extension:
+The first time the app opens, it will walk you through a short setup. This
+only happens once.
 
-1. Open **chrome://extensions** in Chrome
-2. Enable **Developer mode** using the toggle in the top-right corner
+![Screenshot: the welcome screen of the setup wizard](placeholder-setup-welcome.png)
+
+1. **Welcome screen** — click through to begin
+2. **Downloading the AI model** — the app needs to download the AI that
+   powers search. This runs entirely on your computer, so it can take a
+   little while depending on your internet speed. You'll see a progress bar.
+
+   ![Screenshot: model download progress bar](placeholder-model-download.png)
+
+3. **System check** — the app checks that everything downloaded correctly.
+   Green checkmarks mean you're good to go.
+4. **Finish setup** — click **Complete setup**, and you're in.
+
+### Add the browser button
+
+To actually save things, you'll need a small button in Chrome.
+
+1. Open Chrome and go to: `chrome://extensions`
+2. Turn on **Developer mode** — it's a switch in the top-right corner
 3. Click **Load unpacked**
-4. Navigate to the repo folder and select the **`extension/dist/`** folder
-5. The Bookmark icon will appear in your Chrome toolbar
+4. Find your **Internet Expedition** folder, open the `extension` folder inside it, then select the `dist` folder
+5. A new icon will appear in your Chrome toolbar (top-right, near the address bar) — that's your save button
+
+![Screenshot: the extension icon pinned in the Chrome toolbar](placeholder-extension-icon.png)
+
+You're all set up. 🎉
 
 ---
 
-## Usage
+## How to Use It
 
-### Linux / macOS — `bookmark` CLI
+### Saving something
 
-```bash
-bookmark start        # start all services
-bookmark stop         # stop all services
-bookmark restart      # restart all services
-bookmark status       # show running containers
-```
+Whenever you find a video, post, pin, or article you want to remember:
 
-**Logs:**
-```bash
-bookmark logs                 # tail all services
-bookmark logs ollama          # watch model download progress (first run)
-bookmark logs backend         # tail Django API
-bookmark logs frontend        # tail React app
-bookmark logs 200             # tail last 200 lines across all services
-```
+1. Right-click anywhere on the page
+2. Choose **Save to Internet Expedition** from the menu that pops up
 
-**Maintenance:**
-```bash
-bookmark update       # git pull → rebuild containers → restart
-bookmark uninstall    # full removal — containers, volumes, and all saved data
-```
+![Screenshot: right-click menu showing the Save option](placeholder-right-click-save.png)
 
----
+That's it — no need to type anything or explain why you're saving it. The
+app quietly reads and understands the content in the background.
 
-### Windows — Docker Compose
+Works on:
+- YouTube videos
+- Pinterest pins
+- LinkedIn posts
+- Twitter/X posts
+- Any regular website or article
 
-```powershell
-docker compose up -d --build    # start (and build on first run)
-docker compose up -d            # start (after first run)
-docker compose down             # stop
-docker compose restart          # restart
-docker compose ps               # show running containers
-```
+You can also save just a highlighted piece of text: select any text on a
+page, right-click, and choose **Save highlight to Internet Expedition**.
 
-**Logs:**
-```powershell
-docker compose logs -f                    # tail all services
-docker compose logs ollama -f             # watch model download (first run)
-docker compose logs backend -f            # tail Django API
-docker compose logs frontend -f           # tail React app
-docker compose logs --tail=200 -f         # tail last 200 lines
-```
+![Screenshot: selecting text and saving it as a highlight](placeholder-save-highlight.png)
 
-**Maintenance:**
-```powershell
-docker compose up -d --build              # rebuild after a git pull
-docker compose down -v --remove-orphans   # full uninstall (deletes all data)
-```
+### Finding something later
 
----
+This is where it gets useful — you don't need to remember the title, the
+website, or even the exact topic. Just describe it in your own words.
 
-## Troubleshooting
+1. Click the **Internet Expedition** icon in your Chrome toolbar
+2. Type a description into the search bar, like:
+   - *"that video about negotiating a salary"*
+   - *"the recipe with the lemon cake"*
+   - *"post about someone switching careers into design"*
+3. Press Enter
 
-**Models taking too long or search not working**
+![Screenshot: search bar with a typed query and matching results below](placeholder-search-results.png)
 
-`nomic-embed-text-v2-moe` and `gemma4:e2b` download in the background on
-first run. Search will not work until both are fully downloaded. Check progress:
+Click any result to open it again.
 
-```bash
-# Linux / macOS
-bookmark logs ollama
+### A few tips
 
-# Windows
-docker compose logs ollama -f
-```
+- Give it a minute after saving something — it needs a little time to
+  "read" and understand what you saved before it shows up in search.
+- The more naturally you describe what you're looking for, the better —
+  you don't need exact keywords.
+- Everything stays on your computer. Nothing is uploaded anywhere.
 
-**Port 8080 or 8081 already in use**
-
-Something else is using that port. Find and stop it:
-
-```bash
-# Linux / macOS
-sudo lsof -i :8080
-sudo lsof -i :8081
-
-# Windows (PowerShell)
-netstat -ano | findstr :8080
-netstat -ano | findstr :8081
-```
-
-Then start Bookmark again.
-
-**Docker is not running**
-
-```bash
-# Linux
-sudo systemctl start docker
-
-# macOS / Windows
-# Open Docker Desktop from your applications
-```
-
-**Permission denied on `docker compose` (Linux)**
-
-Your user is not in the docker group. Run:
-
-```bash
-sudo usermod -aG docker $USER
-newgrp docker
-```
-
-Then try again.
-
-**Permission denied running install.sh (Linux / macOS)**
-
-Use `bash install.sh` instead of `./install.sh`.
-
----
-
-## Data & Privacy
-
-Everything runs locally. Your saved content, search queries, and embeddings
-never leave your machine. The only outbound requests are to fetch content
-from the platform you are saving from — the same request your browser makes
-anyway.
-
-Export your full library at any time from app settings as a single SQLite file.
-
----
-
-## Roadmap
-
-- [ ] LinkedIn support
-- [ ] Pinterest support
-- [ ] Twitter/X support
-- [ ] General web page capture
-- [ ] Mobile companion app
-- [ ] Multi-device sync (end-to-end encrypted, opt-in)
+![Screenshot: closing image of the search results / library view](placeholder-library-view.png)
