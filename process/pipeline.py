@@ -2,7 +2,7 @@ from core.models import Bookmark, Tag, BookmarkTag, Chunk, Config
 from core.metrics import timed_event
 from django.utils.timezone import now
 import logging
-from ollama import embed
+from process.embeddings import embed_texts
 from process.ollama_chats import generate_tags_for_chunk, generate_hierarchical_tags
 from process.helper_function import normalize_tag
 from process.image_description import IMAGE_LEAVES, SCREENSHOT_LEAVES
@@ -138,14 +138,12 @@ def embedding(bookmark):
     bookmark.refresh_from_db()
     logger.info(f'Starting embedding for bookmark ID: {bookmark.id}, URL: {bookmark.url}')
 
-    embedding_model = Config.get().embedding_model_name
     non_embedded_chunks = Chunk.objects.filter(bookmark=bookmark, embedding=None)
 
     errors = []
     for chunk in non_embedded_chunks:
         try:
-            response = embed(model=embedding_model, input=chunk.text)
-            vector = response.embeddings[0]
+            vector = embed_texts([chunk.text], task='document')[0]
             Chunk.objects.filter(id=chunk.id).update(embedding=vector)
         except Exception as e:
             errors.append(f"chunk {chunk.id}: {str(e)}")

@@ -1,15 +1,26 @@
 import json
 import logging
-from ollama import chat
+
+from process.generation import chat_complete
 
 logger = logging.getLogger(__name__)
 
-TAG_LIST_SCHEMA = {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 5}
+# An object, not a bare array — OpenAI's JSON mode requires an object at the top
+# level, so every provider is normalized to this shape and callers read ["tags"].
+TAG_LIST_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "tags": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 5},
+    },
+    "required": ["tags"],
+}
 
 
 def generate_tags_for_chunk(chunk, model):
-    response = chat(
+    content = chat_complete(
         model=model,
+        json_schema=TAG_LIST_SCHEMA,
+        temperature=0.2,
         messages=[
             {
                 "role": "system",
@@ -36,10 +47,8 @@ Content:
 """,
             },
         ],
-        format=TAG_LIST_SCHEMA,
-        options={"temperature": 0.2},
     )
-    return json.loads(response["message"]["content"])
+    return json.loads(content)["tags"]
 
 
 def generate_hierarchical_tags(compressed_semantic_representation, model):
@@ -62,8 +71,10 @@ def generate_hierarchical_tags(compressed_semantic_representation, model):
     {compressed_semantic_representation}
     """
     logger.info('Generating final hierarchical tags')
-    final_response = chat(
+    content = chat_complete(
         model=model,
+        json_schema=TAG_LIST_SCHEMA,
+        temperature=0.2,
         messages=[
             {
                 "role": "system",
@@ -71,7 +82,5 @@ def generate_hierarchical_tags(compressed_semantic_representation, model):
             },
             {"role": "user", "content": hierarchical_prompt},
         ],
-        format=TAG_LIST_SCHEMA,
-        options={"temperature": 0.2},
     )
-    return json.loads(final_response["message"]["content"])
+    return json.loads(content)["tags"]

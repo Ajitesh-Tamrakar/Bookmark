@@ -1,9 +1,8 @@
 import logging
 import os
 
-import ollama
-
 from core.models import Config
+from process.generation import chat_complete
 from process.helper_function import cleanup_temp_file, temp_file_path, update_raw_text_key
 from process.media_download import download_image, decode_base64_image
 
@@ -18,17 +17,16 @@ def analyze_image(image_path, model):
     logger.info(f"Analyzing image with model '{model}'")
 
     try:
-        response = ollama.chat(
+        return chat_complete(
             model=model,
             messages=[
                 {
                     'role': 'user',
                     'content': 'Analyze this image completely. Identify the main subject, any background elements, and describe what is happening.',
-                    'images': [image_path]
                 }
-            ]
+            ],
+            image_paths=[image_path],
         )
-        return response['message']['content']
 
     except Exception as e:
         logger.error(f"Image analysis failed: {e}")

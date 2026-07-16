@@ -1,31 +1,30 @@
 import Select from '../primitives/Select';
 import Card from '../primitives/Card';
 
-const GEN_MODELS = {
-  ollama: ['gemma4:e2b', 'llama3.2:3b', 'qwen2.5:7b', 'mistral:7b'],
-  openai: ['gpt-4o-mini', 'gpt-4o'],
-  anthropic: ['claude-haiku-4', 'claude-sonnet-4'],
-  google: ['gemini-2.0-flash', 'gemini-1.5-pro'],
-};
-
 const PROV_LABEL = { ollama: 'Ollama', openai: 'OpenAI', anthropic: 'Anthropic', google: 'Google' };
-const PROVIDER_OPTIONS = Object.keys(PROV_LABEL).map((v) => ({ value: v, label: PROV_LABEL[v] }));
 
+// registry: { [provider]: string[] }, fetched from GET /setup/models/ so adding a
+// model/provider is a backend-only (core/registry.py) edit.
 export default function GenerationSection({
   expanded,
   genProvider,
   genModel,
+  registry,
   onGenProvider,
   onGenModel,
   onCustomize,
 }) {
-  const models = GEN_MODELS[genProvider] || [];
+  const models = registry?.[genProvider] || [];
+  const providerOptions = Object.keys(registry || PROV_LABEL).map((v) => ({
+    value: v,
+    label: PROV_LABEL[v] || v,
+  }));
 
   return (
     <div>
       {expanded ? (
         <div className="grid grid-cols-2 gap-4">
-          <Select label="Provider" value={genProvider} onChange={(e) => onGenProvider(e.target.value)} options={PROVIDER_OPTIONS} />
+          <Select label="Provider" value={genProvider} onChange={(e) => onGenProvider(e.target.value)} options={providerOptions} />
           <Select
             label="Model"
             value={genModel}

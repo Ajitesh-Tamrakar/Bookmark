@@ -1,13 +1,28 @@
 from django.shortcuts import render
+from django.db import connection
 from .models import Config, Bookmark, BookmarkTag, Tag, Chunk
 from django.http import JsonResponse
-from core.registry import EMBEDDING_REGISTRY
+from core.registry import EMBEDDING_REGISTRY, GENERATION_REGISTRY
 from django.views.decorators.csrf import csrf_exempt
 from core import pull_manager
+from core import secrets as api_key_store
 import json
 import os
 import re
 from pathlib import Path
+
+
+def _resize_embedding_column(dimension):
+    """Size the chunks.embedding column + its HNSW index to `dimension`. Only safe
+    to call while the table holding embeddings is empty (pre-lock, or after
+    reembed has cleared it) — pgvector can't ALTER a vector column's dimension
+    while an index depends on it, so the index is dropped and rebuilt around it."""
+    with connection.cursor() as cur:
+        cur.execute("DROP INDEX IF EXISTS idx_chunks_embedding;")
+        cur.execute(f"ALTER TABLE chunks ALTER COLUMN embedding TYPE vector({dimension});")
+        cur.execute(
+            "CREATE INDEX idx_chunks_embedding ON chunks USING hnsw (embedding vector_cosine_ops);"
+        )
 
 
 #Setup status — used by frontend root redirect; exempt from SetupRequiredMiddleware via /setup/ prefix
@@ -39,6 +54,7 @@ def setup_embedding(request):
     generation_model = body.get('generation_model')
     whisper_model = body.get('whisper_model')
     dev_mode = body.get('dev_mode', False)
+    keys = body.get('keys') or {}
 
     if not embedding_provider or not embedding_model:
         return JsonResponse({'error': 'embedding_provider and embedding_model are required'}, status=400)
@@ -51,8 +67,39 @@ def setup_embedding(request):
         return JsonResponse({'error': 'Invalid embedding provider'}, status=400)
     if embedding_model not in EMBEDDING_REGISTRY[embedding_provider]:
         return JsonResponse({'error': 'Invalid embedding model'}, status=400)
+    if generation_provider not in GENERATION_REGISTRY:
+        return JsonResponse({'error': 'Invalid generation provider'}, status=400)
+    if generation_model not in GENERATION_REGISTRY[generation_provider]:
+        return JsonResponse({'error': 'Invalid generation model'}, status=400)
 
     embedding_dimension = EMBEDDING_REGISTRY[embedding_provider][embedding_model]
+
+    existing = Config.objects.filter(id=1).first()
+    embedding_locked = bool(existing and existing.embedding_locked)
+    if embedding_locked and (
+        existing.embedding_provider != embedding_provider
+        or existing.embedding_model_name != embedding_model
+    ):
+        return JsonResponse({
+            'error': (
+                'Embedding model is locked after first use and cannot be changed here. '
+                "Run 'python manage.py reembed --provider <provider> --model <model>' to "
+                'switch and re-embed everything.'
+            ),
+        }, status=409)
+
+    try:
+        for provider, value in keys.items():
+            if value:
+                api_key_store.set_api_key(provider, value)
+    except Exception as e:
+        return JsonResponse({'error': f'Failed to store API key: {e}'}, status=500)
+
+    if not embedding_locked:
+        try:
+            _resize_embedding_column(embedding_dimension)
+        except Exception as e:
+            return JsonResponse({'error': f'Failed to size embedding column: {e}'}, status=500)
 
     Config.objects.update_or_create(
         id=1,
@@ -77,7 +124,17 @@ def setup_embedding(request):
         'generation_model': generation_model,
         'whisper_model': whisper_model,
         'dev_mode': bool(dev_mode),
-    })   
+    })
+
+
+@csrf_exempt
+def models_registry(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    return JsonResponse({
+        'embedding': EMBEDDING_REGISTRY,
+        'generation': GENERATION_REGISTRY,
+    })
 
 
 @csrf_exempt

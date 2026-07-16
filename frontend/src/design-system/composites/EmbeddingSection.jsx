@@ -2,23 +2,14 @@ import Select from '../primitives/Select';
 import Callout from '../primitives/Callout';
 import Card from '../primitives/Card';
 
-const EMBED_MODELS = {
-  ollama: [
-    { value: 'nomic-embed-text-v2-moe', label: 'nomic-embed-text-v2-moe', dims: 768 },
-    { value: 'mxbai-embed-large', label: 'mxbai-embed-large', dims: 1024 },
-    { value: 'all-minilm', label: 'all-minilm', dims: 384 },
-  ],
-  openai: [
-    { value: 'text-embedding-3-small', label: 'text-embedding-3-small', dims: 1536 },
-    { value: 'text-embedding-3-large', label: 'text-embedding-3-large', dims: 3072 },
-  ],
-  google: [
-    { value: 'text-embedding-004', label: 'text-embedding-004', dims: 768 },
-  ],
-};
-
 const PROV_LABEL = { ollama: 'Ollama', openai: 'OpenAI', google: 'Google' };
-const PROVIDER_OPTIONS = Object.keys(PROV_LABEL).map((v) => ({ value: v, label: PROV_LABEL[v] }));
+
+// registry: { [provider]: { [model]: dims } }, fetched from GET /setup/models/
+// so adding a model/provider is a backend-only (core/registry.py) edit.
+function modelsFor(registry, provider) {
+  const models = registry?.[provider] || {};
+  return Object.entries(models).map(([value, dims]) => ({ value, label: value, dims }));
+}
 
 const WarningIcon = (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -32,14 +23,19 @@ export default function EmbeddingSection({
   expanded,
   embedProvider,
   embedModel,
+  registry,
   onEmbedProvider,
   onEmbedModel,
   onCustomize,
   onToggleExpanded,
 }) {
-  const models = EMBED_MODELS[embedProvider] || [];
+  const models = modelsFor(registry, embedProvider);
   const currentModel = models.find((m) => m.value === embedModel);
   const dims = currentModel?.dims;
+  const providerOptions = Object.keys(registry || PROV_LABEL).map((v) => ({
+    value: v,
+    label: PROV_LABEL[v] || v,
+  }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,7 +47,7 @@ export default function EmbeddingSection({
 
       {expanded ? (
         <div className="flex flex-col gap-4">
-          <Select label="Provider" value={embedProvider} onChange={(e) => onEmbedProvider(e.target.value)} options={PROVIDER_OPTIONS} />
+          <Select label="Provider" value={embedProvider} onChange={(e) => onEmbedProvider(e.target.value)} options={providerOptions} />
           <div className="flex flex-col gap-2">
             <Select
               label="Model"

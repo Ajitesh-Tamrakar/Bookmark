@@ -101,7 +101,7 @@ class Chunk(models.Model):
     text = models.TextField(null=False)
     chunk_type = models.CharField(max_length=50, choices=ChunkType.choices)
     chunk_index = models.IntegerField(null=True, blank=True)
-    embedding = VectorField(dimensions=768, null=True, blank=True)
+    embedding = VectorField(dimensions=None, null=True, blank=True)
     timestamp_seconds = models.IntegerField(null=True, blank=True) #To Store youtube timestamps to jump to
     is_note = models.BooleanField(default=False)
     word_count = models.IntegerField()

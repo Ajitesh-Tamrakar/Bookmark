@@ -7,17 +7,11 @@ from django.db.models import Count
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Chunk, Bookmark, BookmarkTag, Tag, Config
 from core.metrics import timed_event
-from ollama import embed
+from process.embeddings import embed_texts
+from evaluate.models import SearchFeedback
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-def _embedding_model():
-    try:
-        return Config.get().embedding_model_name or 'nomic-embed-text-v2-moe'
-    except Exception:
-        return 'nomic-embed-text-v2-moe'
 
 
 def _best_chunks(query_embedding):
@@ -86,8 +80,8 @@ def search(request):
         "search_query",
         payload={"query_hash": query_hash, "used_tag_filter": bool(tag_list)},
     ) as p:
-        response = embed(model=_embedding_model(), input=q)
-        rows = _best_chunks(response.embeddings[0])
+        query_vector = embed_texts([q], task='query')[0]
+        rows = _best_chunks(query_vector)
 
         # Tag filtering
         if tag_list:
@@ -133,6 +127,10 @@ def search(request):
         p["result_count"] = len(results)
         p["top_score"] = results[0]['distance'] if results else None
         p["fallback_triggered"] = False
+
+    if Config.get().dev_mode:
+        top_bookmark_id = results[0]['id'] if results else None
+        SearchFeedback.objects.create(query_text=q, shown_bookmark_id=top_bookmark_id)
 
     return JsonResponse({'query': q, 'results': results})
 

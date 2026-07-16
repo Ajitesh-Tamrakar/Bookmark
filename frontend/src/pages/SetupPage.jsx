@@ -52,6 +52,9 @@ export default function SetupPage() {
 
   const [whisper, setWhisper] = useState('base');
 
+  // { embedding: { [provider]: { [model]: dims } }, generation: { [provider]: string[] } }
+  const [registry, setRegistry] = useState({ embedding: {}, generation: {} });
+
   const [keys, setKeys] = useState({ openai: '', anthropic: '', google: '' });
   const [showKey, setShowKey] = useState({ openai: false, anthropic: false, google: false });
 
@@ -102,10 +105,8 @@ export default function SetupPage() {
     setEmbedProvider(val);
     setTop('custom');
     // reset to first model for that provider
-    const firstModels = {
-      ollama: 'nomic-embed-text-v2-moe',
-    };
-    setEmbedModel(firstModels[val] || '');
+    const firstModel = Object.keys(registry.embedding[val] || {})[0] || '';
+    setEmbedModel(firstModel);
     scheduleCheck();
   }
 
@@ -118,13 +119,8 @@ export default function SetupPage() {
   function handleGenProvider(val) {
     setGenProvider(val);
     setTop('custom');
-    const firstModels = {
-      ollama: 'gemma4:e2b',
-      openai: 'gpt-4o-mini',
-      anthropic: 'claude-haiku-4',
-      google: 'gemini-2.0-flash',
-    };
-    setGenModel(firstModels[val] || '');
+    const firstModel = (registry.generation[val] || [])[0] || '';
+    setGenModel(firstModel);
     scheduleCheck();
   }
 
@@ -303,6 +299,13 @@ export default function SetupPage() {
 
   useEffect(() => { document.title = 'Bookmark · Setup'; }, []);
 
+  useEffect(() => {
+    fetch('/setup/models/')
+      .then((r) => r.json())
+      .then(setRegistry)
+      .catch(() => {});
+  }, []);
+
   // Stop polling on unmount
   useEffect(() => () => stopPolling(), []);
 
@@ -383,6 +386,7 @@ export default function SetupPage() {
           generation_model: genModel,
           whisper_model: whisper,
           dev_mode: devMode,
+          keys,
         }),
       });
       if (!res.ok) {
@@ -463,6 +467,7 @@ export default function SetupPage() {
                     expanded={expanded}
                     embedProvider={embedProvider}
                     embedModel={embedModel}
+                    registry={registry.embedding}
                     onEmbedProvider={handleEmbedProvider}
                     onEmbedModel={handleEmbedModel}
                     onCustomize={() => { setExpanded(true); setTop('custom'); }}
@@ -479,6 +484,7 @@ export default function SetupPage() {
                     expanded={expanded}
                     genProvider={genProvider}
                     genModel={genModel}
+                    registry={registry.generation}
                     onGenProvider={handleGenProvider}
                     onGenModel={handleGenModel}
                     onCustomize={() => { setExpanded(true); setTop('custom'); }}
