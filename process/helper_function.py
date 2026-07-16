@@ -21,6 +21,23 @@ def cleanup_temp_file(path):
     except OSError:
         pass
 
+NOMIC_PREFIX_MODELS = ("nomic-embed-text",)
+
+
+def add_embedding_prefix(text: str, model_name: str, task: str) -> str:
+    """
+    Nomic embedding models (v1 and v2-moe) are trained with instruction
+    prefixes and retrieve poorly without them. Ollama does not add these
+    automatically, so callers must apply them before embedding.
+
+    task should be 'search_document' for indexed content or 'search_query'
+    for user queries.
+    """
+    if model_name and model_name.startswith(NOMIC_PREFIX_MODELS):
+        return f"{task}: {text}"
+    return text
+
+
 def normalize_tag(tag: str) -> str:
     """
     Normalize tags for deduplication.

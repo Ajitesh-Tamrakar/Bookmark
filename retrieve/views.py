@@ -8,6 +8,8 @@ from django.views.decorators.csrf import csrf_exempt
 from core.models import Chunk, Bookmark, BookmarkTag, Tag, Config
 from core.metrics import timed_event
 from ollama import embed
+from process.chunk_builders import upsert_note_chunk
+from process.helper_function import add_embedding_prefix
 import logging
 
 logger = logging.getLogger(__name__)
@@ -86,7 +88,8 @@ def search(request):
         "search_query",
         payload={"query_hash": query_hash, "used_tag_filter": bool(tag_list)},
     ) as p:
-        response = embed(model=_embedding_model(), input=q)
+        model = _embedding_model()
+        response = embed(model=model, input=add_embedding_prefix(q, model, "search_query"))
         rows = _best_chunks(response.embeddings[0])
 
         # Tag filtering
@@ -194,4 +197,20 @@ def bookmark_note(request, pk):
     updated = Bookmark.objects.filter(id=pk).update(user_note=note)
     if not updated:
         return JsonResponse({'error': 'Not found'}, status=404)
+
+    bookmark = Bookmark.objects.get(id=pk)
+    result = upsert_note_chunk(bookmark)
+    if result['status'] == 'success':
+        chunk = Chunk.objects.filter(bookmark=bookmark, chunk_type=Chunk.ChunkType.NOTE).first()
+        if chunk is not None:
+            try:
+                model = _embedding_model()
+                text = add_embedding_prefix(chunk.text, model, "search_document")
+                response = embed(model=model, input=text)
+                Chunk.objects.filter(id=chunk.id).update(embedding=response.embeddings[0])
+            except Exception as e:
+                logger.error(f'Failed to embed note chunk for bookmark {pk}: {e}')
+    else:
+        logger.error(f'Failed to upsert note chunk for bookmark {pk}: {result["error"]}')
+
     return JsonResponse({'status': 'updated'})

@@ -95,6 +95,7 @@ class Chunk(models.Model):
         HIGHLIGHT  = 'highlight',  'Highlight'
         SCREENSHOT = 'screenshot', 'Screenshot'
         NOTE       = 'note',       'Note'
+        METADATA   = 'metadata',   'Metadata'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False )
     bookmark = models.ForeignKey('Bookmark', on_delete=models.CASCADE, db_column='bookmark_id')
