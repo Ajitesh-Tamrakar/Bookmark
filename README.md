@@ -122,7 +122,7 @@ Continue to [Load the browser extension](#load-the-browser-extension) below.
 Look at the menu bar at the top of your screen for the whale icon and click it.
 It should say **"Engine running"**. If it says "Starting...", wait a minute.
 
-![Screenshot: Docker whale icon in the Mac menu bar showing Engine running](placeholder-docker-engine-running-mac.png)
+![Screenshot: Docker whale icon in the Mac menu bar showing Engine running](assets/mac_os_docker_engine_running.png)
 
 ### Step 2: Download Internet Expedition
 
@@ -139,7 +139,7 @@ It should say **"Engine running"**. If it says "Starting...", wait a minute.
 2. In the Terminal window, type `cd ` (with a space after it), but don't press Enter yet
 3. Drag the **Internet Expedition** folder from Finder straight into the Terminal window
 
-![Screenshot: dragging the folder into Terminal to fill in the path](placeholder-drag-folder-terminal.png)
+![Screenshot: dragging the folder into Terminal to fill in the path](assets/mac_open_in_terminal.png)
 
 Terminal will automatically fill in the correct folder path. Now press **Enter**.
 
@@ -155,7 +155,7 @@ In the Terminal window, type this exactly and press **Enter**:
 docker compose up -d --build
 ```
 
-![Screenshot: the command being pasted into Terminal](placeholder-paste-command-mac.png)
+![Screenshot: the command being pasted into Terminal](assets/mac_terminal.png)
 
 The first time you do this, it will take several minutes while it downloads
 and builds everything. Lots of text scrolling by is normal.
