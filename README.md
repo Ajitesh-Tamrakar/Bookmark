@@ -1,11 +1,11 @@
+<img src="extension/icons/icon128.png" width="72" alt="Internet Expedition icon" />
+
 # Internet Expedition 🔖
 
 Save anything you find online (videos, posts, articles, pins) and find it
 again later just by describing what you remember about it.
 
 No account. No subscription. Nothing you save ever leaves your computer.
-
-![Screenshot: app icon or hero banner showing the app in use](placeholder-hero.png)
 
 ---
 
@@ -32,58 +32,65 @@ Docker Desktop is a free program that lets Internet Expedition run safely on you
 
 ![Screenshot: Docker Desktop download page](assets/docker_download_page.png)
 
+> 💡 If Windows shows a blue "Windows protected your PC" warning while installing, click **More info**, then **Run anyway**. This just means the installer isn't digitally signed yet, not that something is wrong.
+
 **Make sure it's actually running before moving on:**
 
 Open the Docker Desktop app and look at the bottom-left corner. It should say
-**"Engine running"** with a green dot. If it says "Starting..." or is red, wait
-a minute and check again.
+**"Engine running"** next to a green icon. If it says "Starting..." or looks
+different, wait a minute and check again.
 
-![Screenshot: Docker Desktop showing Engine running status](placeholder-docker-engine-running.png)
+![Screenshot: Docker Desktop showing Engine running status in the bottom-left corner](assets/mac_os_docker_engine_running.png)
 
 > 💡 If Docker Desktop asks you to enable **WSL2** during install, click yes.
 > This is normal and required.
 
 ### Step 2: Download Internet Expedition
 
-1. Go to the project page: `[link to your project page]`
-2. Click the green **Code** button, then click **Download ZIP**
-3. Open your Downloads folder, right-click the ZIP file, and choose **Extract All**
-4. Move the extracted **Internet Expedition** folder somewhere easy to find, like your Desktop
+1. Go to the project page: [https://github.com/Ajitesh-Tamrakar/Bookmark](https://github.com/Ajitesh-Tamrakar/Bookmark)
+2. Click the **Code** button
+3. In the dropdown that opens, click **Download ZIP** near the bottom
 
-![Screenshot: Download ZIP button on the project page](assets/github_project_page.png)
+![Screenshot: the Code dropdown with the Download ZIP link](assets/github_project_page.png)
 
-### Step 3: Open a command window inside that folder
+4. Open your Downloads folder — you'll find the ZIP file there
 
-1. Open **File Explorer** and go inside the **Internet Expedition** folder
-   (you should see files like `docker-compose.yml` inside it)
-2. Click once in the empty address bar at the top of the window
-3. Type `cmd` and press **Enter**
+### Step 3: Extract the ZIP
 
-![Screenshot: typing cmd into File Explorer's address bar](placeholder-cmd-trick.png)
+1. Right-click the ZIP file
+2. Choose **Extract All...**
+3. Extract it somewhere easy to find, like your Desktop
 
-A black window (Command Prompt) opens, already pointed at the right folder.
+![Screenshot: right-click menu with Extract All highlighted](assets/extract_in_windows.png)
 
-> 💡 If Windows shows a blue "Windows protected your PC" warning at any point,
-> click **More info**, then **Run anyway**. This just means the file isn't
-> digitally signed yet, not that something is wrong.
+### Step 4: Open a terminal in that folder
 
-### Step 4: Start it up
+1. Open the folder you just extracted (you should see files like `docker-compose.yml` inside it)
+2. Right-click inside the folder (on empty space) and choose **Open in Terminal**
 
-In the black window, type this exactly and press **Enter**:
+![Screenshot: right-click menu with Open in Terminal highlighted](assets/open_in_terminal_windows.png)
+
+A terminal window opens, already pointed at the right folder.
+
+> 💡 Don't see an **Open in Terminal** option? Click once in the empty address
+> bar at the top of the File Explorer window, type `cmd`, and press **Enter**
+> instead — that opens a Command Prompt in the same folder.
+
+### Step 5: Start it up
+
+In the terminal window, type this exactly and press **Enter**:
 
 ```
 docker compose up -d --build
 ```
 
-![Screenshot: the command being pasted into Command Prompt](placeholder-paste-command.png)
-
 The first time you do this, it will take several minutes while it downloads
 and builds everything it needs. You'll see a lot of text scroll by. That's
 normal.
 
-### Step 5: How do you know it worked?
+### Step 6: How do you know it worked?
 
-The command window will finish and give you back a blinking cursor. That
+The terminal will finish and give you back a blinking cursor. That
 just means the *instruction* was sent, not that the app is fully ready yet.
 
 The reliable way to check:
@@ -91,8 +98,6 @@ The reliable way to check:
 1. Switch to the **Docker Desktop** app
 2. Click **Containers** in the left sidebar
 3. You should see a group of containers, all with a green dot next to them
-
-![Screenshot: Docker Desktop Containers tab showing all services running](placeholder-containers-running.png)
 
 Once everything is green, open Chrome and go to:
 
@@ -119,33 +124,36 @@ Continue to [Load the browser extension](#load-the-browser-extension) below.
 
 **Make sure it's actually running before moving on:**
 
-Look at the menu bar at the top of your screen for the whale icon and click it.
-It should say **"Engine running"**. If it says "Starting...", wait a minute.
+Open Docker Desktop (or click the whale icon in the menu bar to bring it to
+the front). In the bottom-left corner it should say **"Engine running"**
+next to a green icon. If it says "Starting...", wait a minute and check again.
 
-![Screenshot: Docker whale icon in the Mac menu bar showing Engine running](assets/mac_os_docker_engine_running.png)
+![Screenshot: Docker Desktop showing Engine running status in the bottom-left corner](assets/mac_os_docker_engine_running.png)
 
 ### Step 2: Download Internet Expedition
 
-1. Go to the project page: `https://github.com/Ajitesh-Tamrakar/Bookmark`
-2. Click the blue **Code** button, then click **Download ZIP**
-3. Find the ZIP in your Downloads folder and double-click it to unzip
-4. Move the **Internet Expedition** folder somewhere easy to find, like your Desktop
+1. Go to the project page: [https://github.com/Ajitesh-Tamrakar/Bookmark](https://github.com/Ajitesh-Tamrakar/Bookmark)
+2. Click the **Code** button
+3. In the dropdown that opens, click **Download ZIP** near the bottom
+4. Find the ZIP in your Downloads folder and double-click it to unzip
 
-![Screenshot: Download ZIP button on the project page](assets/github_project_page.png)
+![Screenshot: the Code dropdown with the Download ZIP link](assets/github_project_page.png)
 
-### Step 3: Open a terminal inside that folder
+5. Move the unzipped folder somewhere easy to find, like your Desktop
 
-1. Open **Spotlight** (press `Cmd + Space`), type **Terminal**, press Enter
-2. In the Terminal window, type `cd ` (with a space after it), but don't press Enter yet
-3. Drag the **Internet Expedition** folder from Finder straight into the Terminal window
+### Step 3: Open a terminal in that folder
 
-![Screenshot: dragging the folder into Terminal to fill in the path](assets/mac_open_in_terminal.png)
+1. Right-click (or Control-click) the unzipped project folder in Finder
+2. Choose **New Terminal at Folder**
 
-Terminal will automatically fill in the correct folder path. Now press **Enter**.
+![Screenshot: Finder right-click menu with New Terminal at Folder highlighted](assets/mac_open_in_terminal.png)
 
-> 💡 If you see a **"New Terminal at Folder"** option when you right-click
-> inside the folder in Finder, that works too. Either way gets you to the
-> same place.
+A Terminal window opens, already pointed at the right folder.
+
+> 💡 Don't see that option? Open **Spotlight** (`Cmd + Space`), type
+> **Terminal**, press Enter, then type `cd ` (with a space after it) and
+> drag the project folder from Finder into the Terminal window before
+> pressing Enter. Terminal will fill in the correct path for you.
 
 ### Step 4: Start it up
 
@@ -155,7 +163,7 @@ In the Terminal window, type this exactly and press **Enter**:
 docker compose up -d --build
 ```
 
-![Screenshot: the command being pasted into Terminal](assets/mac_terminal.png)
+![Screenshot: the command typed into Terminal, ready to run](assets/mac_terminal.png)
 
 The first time you do this, it will take several minutes while it downloads
 and builds everything. Lots of text scrolling by is normal.
@@ -170,8 +178,6 @@ The reliable way to check:
 1. Switch to the **Docker Desktop** app
 2. Click **Containers** in the left sidebar
 3. You should see a group of containers, all with a green dot next to them
-
-![Screenshot: Docker Desktop Containers tab showing all services running](placeholder-containers-running.png)
 
 Once everything is green, open Chrome and go to:
 
@@ -212,17 +218,21 @@ Continue to [Load the browser extension](#load-the-browser-extension) below.
 
 This part is the same on every operating system.
 
-1. Open Chrome and go to `chrome://extensions`
+1. Open Chrome and go to `chrome://extensions` (or click the puzzle-piece icon next to the address bar and choose **Manage extensions**)
+
+![Screenshot: typing chrome://extensions into the address bar](assets/reach_extension_page.png)
+
 2. Turn on **Developer mode** (the switch is in the top-right corner)
 3. Click **Load unpacked**
-4. Inside your Internet Expedition folder, select the **`extension`** folder itself (not a subfolder)
 
-![Screenshot: Load unpacked dialog selecting the extension folder](placeholder-load-unpacked.png)
+![Screenshot: the Developer mode toggle and Load unpacked button on chrome://extensions](assets/dev_mode_load_extension.png)
+
+4. In the file picker, browse into your project folder and select the **`extension`** folder itself (not a subfolder, and not the whole project folder)
+
+![Screenshot: file picker with the extension folder selected](assets/load_extension_folder.png)
 
 5. Click the **puzzle-piece icon** in Chrome's toolbar (top-right, next to the address bar)
 6. Find **Internet Expedition** in the list and click the **pin** icon next to it, so it stays visible in your toolbar
-
-![Screenshot: pinning the extension from the puzzle-piece menu](placeholder-pin-extension.png)
 
 You're all set. From now on, click the pinned icon any time to open the app.
 It'll take you straight to setup the first time, and straight to search after that.
@@ -238,8 +248,6 @@ Whenever you find a video, post, pin, or article you want to remember:
 1. Right-click anywhere on the page
 2. Choose **Save to Internet Expedition** from the menu
 
-![Screenshot: right-click menu showing the Save option](placeholder-save-menu.png)
-
 No need to type anything or explain why you're saving it. The app
 quietly reads and understands the content in the background.
 
@@ -253,8 +261,6 @@ Works on:
 You can also save just a highlighted piece of text: select any text on a
 page, right-click, and choose **Save highlight to Internet Expedition**.
 
-![Screenshot: selecting text and saving it as a highlight](placeholder-save-highlight.png)
-
 ### Finding something later
 
 You don't need to remember the title, the website, or even the exact topic.
@@ -267,8 +273,6 @@ Just describe it in your own words.
    - "post about someone switching careers into design"
 3. Press Enter
 
-![Screenshot: search bar with a typed query and matching results below](placeholder-search-results.png)
-
 Click any result to open it again.
 
 ### A few tips
@@ -276,5 +280,3 @@ Click any result to open it again.
 - Give it a minute after saving something. It needs a little time to "read" and understand what you saved before it shows up in search.
 - The more naturally you describe what you're looking for, the better. You don't need exact keywords.
 - Everything stays on your computer. Nothing is uploaded anywhere.
-
-![Screenshot: closing image of the search results / library view](placeholder-final.png)
