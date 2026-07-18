@@ -36,7 +36,7 @@ export default function SearchPage() {
   const debounceRef = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => { document.title = 'Bookmark · Search'; }, []);
+  useEffect(() => { document.title = 'Internet Expedition · Search'; }, []);
 
   // Fetch tags list and pipeline visibility on mount
   useEffect(() => {
@@ -274,19 +274,19 @@ export default function SearchPage() {
       <div className="max-w-[840px] mx-auto px-8 pt-10 pb-[160px] box-border">
 
         {/* Top bar */}
-        <div className="flex items-center justify-between pb-6 border-b border-border-subtle">
-          <div className="flex items-center gap-[14px]">
+        <div className="flex flex-wrap items-center justify-between gap-y-3 pb-6 border-b border-border-subtle">
+          <div className="flex items-center gap-[14px] shrink-0">
             <span className="w-[30px] h-[30px] rounded-[8px] bg-text-primary flex items-center justify-center flex-none mr-1">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="#0a0a0b">
                 <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.7L5 21V4a1 1 0 0 1 1-1z" />
               </svg>
             </span>
-            <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">Bookmark</span>
+            <span className="text-[15.5px] font-semibold tracking-tight text-text-primary whitespace-nowrap">Internet Expedition</span>
             <span className="text-border-strong text-[15px] mx-[1px]">/</span>
             <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">Search</span>
             <Badge tone="warning" size="xs" className="ml-1.5 uppercase">dev</Badge>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             {showPipeline && (
               <Link
                 to="/pipeline"
@@ -298,6 +298,21 @@ export default function SearchPage() {
                   <path d="M5 8.2v3.3a3 3 0 0 0 3 3h8.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                 </svg>
                 Pipeline
+                <svg className="text-text-faint group-hover:text-text-secondary group-hover:translate-x-[2px] transition-all" width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+            )}
+            {showPipeline && (
+              <Link
+                to="/retrieval-quality"
+                className="inline-flex items-center gap-2 no-underline bg-bg-raised border border-border-default rounded-[8px] text-text-secondary font-mono text-[11.5px] tracking-[0.04em] px-3 py-[7px] cursor-pointer hover:border-border-strong hover:text-text-primary hover:bg-bg-hover-strong transition-all group"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <circle cx="11" cy="11" r="6.4" stroke="currentColor" strokeWidth="1.7" />
+                  <path d="M11 7v4l2.6 2.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Retrieval Quality
                 <svg className="text-text-faint group-hover:text-text-secondary group-hover:translate-x-[2px] transition-all" width="12" height="12" viewBox="0 0 24 24" fill="none">
                   <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>

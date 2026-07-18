@@ -1,4 +1,4 @@
-<img src="extension/icons/icon128.png" width="72" alt="Internet Expedition icon" />
+<img src="assets/icon.svg" width="72" alt="Internet Expedition icon" />
 
 # Internet Expedition 🔖
 
