@@ -297,7 +297,7 @@ export default function SetupPage() {
     }, 1000);
   }
 
-  useEffect(() => { document.title = 'Bookmark · Setup'; }, []);
+  useEffect(() => { document.title = 'Internet Expedition · Setup'; }, []);
 
   useEffect(() => {
     fetch('/setup/models/')
@@ -444,7 +444,7 @@ export default function SetupPage() {
               {/* ---- Welcome ---- */}
               <section id="welcome">
                 <SectionHeader
-                  eyebrow="Bookmark"
+                  eyebrow="Internet Expedition"
                   title="Welcome"
                   description="This wizard configures your local AI pipeline. All models run on your machine unless you choose a hosted provider. You'll only need to do this once."
                   className="max-w-[520px]"

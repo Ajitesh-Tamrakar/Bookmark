@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
 
 import { redirectIfSetupRequired } from '../utils/setupGuard';
+import useDevModeGuard from '../hooks/useDevModeGuard';
 import {
   PipelineNav,
   WorkerStatusBar,
@@ -41,22 +42,6 @@ function fmtAgo(ms) {
 }
 
 // ---------------------------------------------------------------------------
-// Dev-mode guard — redirects away if setup_status says dev_mode is false
-// ---------------------------------------------------------------------------
-function useDevModeGuard() {
-  const [status, setStatus] = useState('loading'); // 'loading' | 'allowed' | 'denied'
-
-  useEffect(() => {
-    fetch('/setup/status/')
-      .then((res) => res.json())
-      .then((data) => setStatus(data.dev_mode ? 'allowed' : 'denied'))
-      .catch(() => setStatus('denied'));
-  }, []);
-
-  return status;
-}
-
-// ---------------------------------------------------------------------------
 // PipelinePage
 // ---------------------------------------------------------------------------
 export default function PipelinePage() {
@@ -72,7 +57,7 @@ export default function PipelinePage() {
 
   const pollRef = useRef(null);
 
-  useEffect(() => { document.title = 'Bookmark · Pipeline'; }, []);
+  useEffect(() => { document.title = 'Internet Expedition · Pipeline'; }, []);
 
   const fetchStatus = async () => {
     try {
@@ -220,7 +205,7 @@ export default function PipelinePage() {
               </svg>
             </span>
             <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">
-              Bookmark
+              Internet Expedition
             </span>
             <span className="text-border-strong text-[15px]">/</span>
             <span className="text-[15.5px] font-semibold tracking-tight text-text-primary">
