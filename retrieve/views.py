@@ -8,8 +8,13 @@ from django.views.decorators.csrf import csrf_exempt
 from core.models import Chunk, Bookmark, BookmarkTag, Tag, Config
 from core.metrics import timed_event
 from process.embeddings import embed_texts
-from evaluate.models import SearchFeedback
 import logging
+
+try:
+    from evaluate.models import SearchFeedback
+except ImportError:
+    # 'evaluate' app lives on the Retrival_Improvement branch; not present on main yet.
+    SearchFeedback = None
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +133,7 @@ def search(request):
         p["top_score"] = results[0]['distance'] if results else None
         p["fallback_triggered"] = False
 
-    if Config.get().dev_mode:
+    if SearchFeedback and Config.get().dev_mode:
         top_bookmark_id = results[0]['id'] if results else None
         SearchFeedback.objects.create(query_text=q, shown_bookmark_id=top_bookmark_id)
 
