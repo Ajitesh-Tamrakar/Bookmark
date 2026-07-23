@@ -32,6 +32,17 @@ export { default as FailedTable } from './composites/FailedTable';
 export { default as InFlightTable } from './composites/InFlightTable';
 export { default as TempFolderSection } from './composites/TempFolderSection';
 
+export { default as RetrievalNav } from './composites/RetrievalNav';
+export { default as StatSparkCard } from './composites/StatSparkCard';
+export { default as OverviewSection } from './composites/OverviewSection';
+export { default as TrendChart } from './composites/TrendChart';
+export { default as TrendSection } from './composites/TrendSection';
+export { default as BreakdownChart } from './composites/BreakdownChart';
+export { default as BreakdownSection } from './composites/BreakdownSection';
+export { default as EvalRunsSection } from './composites/EvalRunsSection';
+export { default as GoldenSetSection } from './composites/GoldenSetSection';
+export { default as FeedbackSection } from './composites/FeedbackSection';
+
 export { default as SetupNav } from './composites/SetupNav';
 export { default as ProviderToggle } from './composites/ProviderToggle';
 export { default as ApiKeysSection } from './composites/ApiKeysSection';

@@ -13,6 +13,7 @@ export default defineConfig({
       '/pipeline/': backendUrl,
       '/capture': backendUrl,
       '/retrieve': backendUrl,
+      '/evaluate': backendUrl,
       '/admin': backendUrl,
     },
   },

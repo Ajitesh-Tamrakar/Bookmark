@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'capture',
     'process',
     'retrieve',
+    'evaluate',
     'corsheaders',
 ]
 
