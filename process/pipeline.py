@@ -7,7 +7,10 @@ from process.ollama_chats import generate_tags_for_chunk, generate_hierarchical_
 from process.helper_function import normalize_tag
 from process.image_description import IMAGE_LEAVES, SCREENSHOT_LEAVES
 from process.video_extraction import VIDEO_LEAVES
-from process.chunk_builders import chunk_text, chunk_image, chunk_highlight, chunk_screenshot, VIDEO_CHUNK_LEAVES
+from process.chunk_builders import (
+    chunk_text, chunk_image, chunk_highlight, chunk_screenshot,
+    chunk_metadata, upsert_note_chunk, VIDEO_CHUNK_LEAVES,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -128,6 +131,14 @@ def chunking(bookmark):
         result = chunk_screenshot(bookmark)
         if result['status'] == 'failed':
             errors.append(f"screenshot: {result['error']}")
+
+    result = chunk_metadata(bookmark)
+    if result['status'] == 'failed':
+        errors.append(f"metadata: {result['error']}")
+
+    result = upsert_note_chunk(bookmark)
+    if result['status'] == 'failed':
+        errors.append(f"note: {result['error']}")
 
     if errors:
         return {'stage': 'chunking', 'status': 'failed', 'error': '; '.join(errors)}

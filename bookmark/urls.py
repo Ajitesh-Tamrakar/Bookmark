@@ -22,4 +22,5 @@ urlpatterns = [
     path('', include('core.urls')),
     path('capture/', include('capture.urls')),
     path('retrieve/', include('retrieve.urls')),
+    path('evaluate/', include('evaluate.urls')),
 ]

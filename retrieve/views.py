@@ -8,13 +8,10 @@ from django.views.decorators.csrf import csrf_exempt
 from core.models import Chunk, Bookmark, BookmarkTag, Tag, Config
 from core.metrics import timed_event
 from process.embeddings import embed_texts
+from process.chunk_builders import upsert_note_chunk
 import logging
 
-try:
-    from evaluate.models import SearchFeedback
-except ImportError:
-    # 'evaluate' app lives on the Retrival_Improvement branch; not present on main yet.
-    SearchFeedback = None
+from evaluate.models import SearchFeedback
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +130,7 @@ def search(request):
         p["top_score"] = results[0]['distance'] if results else None
         p["fallback_triggered"] = False
 
-    if SearchFeedback and Config.get().dev_mode:
+    if Config.get().dev_mode:
         top_bookmark_id = results[0]['id'] if results else None
         SearchFeedback.objects.create(query_text=q, shown_bookmark_id=top_bookmark_id)
 
@@ -197,4 +194,18 @@ def bookmark_note(request, pk):
     updated = Bookmark.objects.filter(id=pk).update(user_note=note)
     if not updated:
         return JsonResponse({'error': 'Not found'}, status=404)
+
+    bookmark = Bookmark.objects.get(id=pk)
+    result = upsert_note_chunk(bookmark)
+    if result['status'] == 'success':
+        chunk = Chunk.objects.filter(bookmark=bookmark, chunk_type=Chunk.ChunkType.NOTE).first()
+        if chunk is not None:
+            try:
+                vector = embed_texts([chunk.text], task='document')[0]
+                Chunk.objects.filter(id=chunk.id).update(embedding=vector)
+            except Exception as e:
+                logger.error(f'Failed to embed note chunk for bookmark {pk}: {e}')
+    else:
+        logger.error(f'Failed to upsert note chunk for bookmark {pk}: {result["error"]}')
+
     return JsonResponse({'status': 'updated'})

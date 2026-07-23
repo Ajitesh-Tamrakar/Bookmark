@@ -3,6 +3,7 @@ import SearchPage from "./pages/SearchPage"
 import SetupPage from "./pages/SetupPage"
 import RootRedirect from "./pages/RootRedirect"
 import PipelinePage from "./pages/PipelinePage"
+import RetrievalQualityPage from "./pages/RetrievalQualityPage"
 
 
 function App(){
@@ -13,6 +14,7 @@ function App(){
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/pipeline" element={<PipelinePage />} />
+        <Route path="/retrieval-quality" element={<RetrievalQualityPage />} />
       </Routes>
     </BrowserRouter>
   )
