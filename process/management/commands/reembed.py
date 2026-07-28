@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
+from core.db import ensure_embedding_index, HNSW_MAX_DIMENSIONS
 from core.models import Chunk, Config
 from core.registry import EMBEDDING_REGISTRY
 from process.embeddings import embed_texts
@@ -40,14 +41,20 @@ class Command(BaseCommand):
                 self.stdout.write('Aborted.')
                 return
 
-        self.stdout.write('Dropping index and resizing embedding column...')
+        self.stdout.write('Clearing existing embeddings...')
         with connection.cursor() as cur:
-            cur.execute("DROP INDEX IF EXISTS idx_chunks_embedding;")
             cur.execute("UPDATE chunks SET embedding = NULL;")
-            cur.execute(f"ALTER TABLE chunks ALTER COLUMN embedding TYPE vector({dimension});")
-            cur.execute(
-                "CREATE INDEX idx_chunks_embedding ON chunks USING hnsw (embedding vector_cosine_ops);"
-            )
+
+        result = ensure_embedding_index(dimension)
+        if result['action'] == 'skipped':
+            self.stdout.write(f'Embedding column already vector({dimension}); index unchanged.')
+        elif result['index_built']:
+            self.stdout.write('Embedding column resized and HNSW index rebuilt.')
+        else:
+            self.stdout.write(self.style.WARNING(
+                f"Dimension {dimension} exceeds pgvector's HNSW limit ({HNSW_MAX_DIMENSIONS}); "
+                f"column resized but index NOT built — search will use a sequential scan."
+            ))
 
         Config.objects.update_or_create(
             id=1,

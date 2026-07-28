@@ -1,28 +1,15 @@
 from django.shortcuts import render
-from django.db import connection
 from .models import Config, Bookmark, BookmarkTag, Tag, Chunk
 from django.http import JsonResponse
 from core.registry import EMBEDDING_REGISTRY, GENERATION_REGISTRY
 from django.views.decorators.csrf import csrf_exempt
 from core import pull_manager
 from core import secrets as api_key_store
+from core.db import ensure_embedding_index
 import json
 import os
 import re
 from pathlib import Path
-
-
-def _resize_embedding_column(dimension):
-    """Size the chunks.embedding column + its HNSW index to `dimension`. Only safe
-    to call while the table holding embeddings is empty (pre-lock, or after
-    reembed has cleared it) — pgvector can't ALTER a vector column's dimension
-    while an index depends on it, so the index is dropped and rebuilt around it."""
-    with connection.cursor() as cur:
-        cur.execute("DROP INDEX IF EXISTS idx_chunks_embedding;")
-        cur.execute(f"ALTER TABLE chunks ALTER COLUMN embedding TYPE vector({dimension});")
-        cur.execute(
-            "CREATE INDEX idx_chunks_embedding ON chunks USING hnsw (embedding vector_cosine_ops);"
-        )
 
 
 #Setup status — used by frontend root redirect; exempt from SetupRequiredMiddleware via /setup/ prefix
@@ -97,7 +84,7 @@ def setup_embedding(request):
 
     if not embedding_locked:
         try:
-            _resize_embedding_column(embedding_dimension)
+            ensure_embedding_index(embedding_dimension)
         except Exception as e:
             return JsonResponse({'error': f'Failed to size embedding column: {e}'}, status=500)
 

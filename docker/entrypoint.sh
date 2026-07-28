@@ -18,6 +18,9 @@ print('[bookmark] Extensions ready.')
 if [ "${SKIP_MIGRATE:-false}" != "true" ]; then
     echo "[bookmark] Running migrations..."
     python manage.py migrate --noinput
+
+    echo "[bookmark] Ensuring chunks.embedding index..."
+    python manage.py ensure_embedding_index
 else
     echo "[bookmark] Skipping migrations (SKIP_MIGRATE=true)."
 fi

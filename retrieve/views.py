@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.db import connection
 from django.db.models import Count
 from django.views.decorators.csrf import csrf_exempt
+from core.db import embedding_index_status
 from core.models import Chunk, Bookmark, BookmarkTag, Tag, Config
 from core.metrics import timed_event
 from process.embeddings import embed_texts
@@ -209,3 +210,21 @@ def bookmark_note(request, pk):
         logger.error(f'Failed to upsert note chunk for bookmark {pk}: {result["error"]}')
 
     return JsonResponse({'status': 'updated'})
+
+
+def status_summary(request):
+    """Minimal, non-dev-gated system status signal. Only reports pgvector index
+    health for now; the shape is left extensible so more fields (pending/
+    processing/failed/unembedded_complete counts, etc.) can be added later
+    without breaking existing consumers."""
+    try:
+        dimension = Config.get().embedding_dimensions
+    except Config.DoesNotExist:
+        dimension = None
+
+    return JsonResponse({
+        'pgvector_index': {
+            'present': embedding_index_status()['present'],
+            'dimension': dimension,
+        },
+    })
