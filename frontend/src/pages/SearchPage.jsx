@@ -32,6 +32,7 @@ export default function SearchPage() {
   const [allTags, setAllTags] = useState([]);
   const [results, setResults] = useState({ mode: null, items: [] });
   const [showPipeline, setShowPipeline] = useState(false);
+  const [unembeddedCount, setUnembeddedCount] = useState(0);
 
   const debounceRef = useRef(null);
   const navigate = useNavigate();
@@ -51,6 +52,11 @@ export default function SearchPage() {
     fetch('/setup/status/')
       .then((r) => r.json())
       .then((d) => setShowPipeline(!!(d.dev_mode && d.setup_complete)))
+      .catch(() => {});
+
+    fetch('/retrieve/status/summary/')
+      .then((r) => r.json())
+      .then((d) => setUnembeddedCount(d.unembedded_complete_count || 0))
       .catch(() => {});
   }, [navigate]);
 
@@ -347,6 +353,15 @@ export default function SearchPage() {
         {error && (
           <Callout tone="error" className="mt-4">
             <span className="font-mono text-[13px] text-accent-error">{error}</span>
+          </Callout>
+        )}
+
+        {/* Unembedded-complete banner (B-23) — non-dev-gated per M-39 */}
+        {!error && unembeddedCount > 0 && (
+          <Callout tone="warning" className="mt-4">
+            <span className="font-mono text-[13px]">
+              {unembeddedCount} saved item{unembeddedCount === 1 ? '' : 's'} aren't searchable yet — re-index needed.
+            </span>
           </Callout>
         )}
 

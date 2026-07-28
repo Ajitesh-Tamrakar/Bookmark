@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import autoreload
 from process.pipeline import run_pipeline
+from core.db import repair_unembedded_complete_bookmarks
 from core.models import Bookmark
 from django.db import transaction
 from django.utils.timezone import now
@@ -23,6 +24,9 @@ class Command(BaseCommand):
             current_step=None,
             processing_started_at=None,
         )
+        repaired = repair_unembedded_complete_bookmarks(Bookmark)
+        if repaired:
+            print(f'Repaired {len(repaired)} complete bookmark(s) with unembedded chunks', flush=True)
 
         try:
             while True:

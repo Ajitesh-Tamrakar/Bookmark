@@ -1,5 +1,6 @@
 import hashlib
 import json
+import time
 
 from django.http import JsonResponse
 from django.db import connection
@@ -15,6 +16,11 @@ import logging
 from evaluate.models import SearchFeedback
 
 logger = logging.getLogger(__name__)
+
+# bookmark_note() retries embedding just the note chunk inline rather than
+# requeuing the whole bookmark for a full pipeline re-run over one chunk.
+NOTE_EMBED_ATTEMPTS = 3
+NOTE_EMBED_RETRY_DELAY_SECONDS = 0.5
 
 
 def _best_chunks(query_embedding):
@@ -197,34 +203,64 @@ def bookmark_note(request, pk):
         return JsonResponse({'error': 'Not found'}, status=404)
 
     bookmark = Bookmark.objects.get(id=pk)
+    note_indexed = True
     result = upsert_note_chunk(bookmark)
     if result['status'] == 'success':
         chunk = Chunk.objects.filter(bookmark=bookmark, chunk_type=Chunk.ChunkType.NOTE).first()
         if chunk is not None:
-            try:
-                vector = embed_texts([chunk.text], task='document')[0]
-                Chunk.objects.filter(id=chunk.id).update(embedding=vector)
-            except Exception as e:
-                logger.error(f'Failed to embed note chunk for bookmark {pk}: {e}')
+            last_error = None
+            for attempt in range(1, NOTE_EMBED_ATTEMPTS + 1):
+                try:
+                    vector = embed_texts([chunk.text], task='document')[0]
+                    Chunk.objects.filter(id=chunk.id).update(embedding=vector)
+                    last_error = None
+                    break
+                except Exception as e:
+                    last_error = e
+                    if attempt < NOTE_EMBED_ATTEMPTS:
+                        time.sleep(NOTE_EMBED_RETRY_DELAY_SECONDS)
+
+            if last_error is not None:
+                # Bookmark stays processing_status='complete' with this one chunk
+                # unembedded -- the same B-23 invariant violation run_pipeline now
+                # guards against -- but only after retrying inline first, so a
+                # transient blip doesn't cost a full pipeline re-run. Left in this
+                # state, repair_embeddings (core.db) still picks it up on the next
+                # worker restart or migration run as a last-resort backstop.
+                logger.error(
+                    f'Failed to embed note chunk for bookmark {pk} after '
+                    f'{NOTE_EMBED_ATTEMPTS} attempts: {last_error}'
+                )
+                note_indexed = False
     else:
         logger.error(f'Failed to upsert note chunk for bookmark {pk}: {result["error"]}')
+        note_indexed = False
 
-    return JsonResponse({'status': 'updated'})
+    return JsonResponse({'status': 'updated', 'note_indexed': note_indexed})
 
 
 def status_summary(request):
-    """Minimal, non-dev-gated system status signal. Only reports pgvector index
-    health for now; the shape is left extensible so more fields (pending/
-    processing/failed/unembedded_complete counts, etc.) can be added later
-    without breaking existing consumers."""
+    """Minimal, non-dev-gated system status signal. Reports pgvector index health
+    and the count of 'complete' bookmarks that still have unembedded chunks (the
+    B-23 invariant violation -- these are saved but invisible to search). The
+    shape is left extensible so more fields (pending/processing/failed counts,
+    etc.) can be added later without breaking existing consumers."""
     try:
         dimension = Config.get().embedding_dimensions
     except Config.DoesNotExist:
         dimension = None
+
+    unembedded_complete_count = (
+        Bookmark.objects
+        .filter(processing_status='complete', chunk__embedding__isnull=True)
+        .distinct()
+        .count()
+    )
 
     return JsonResponse({
         'pgvector_index': {
             'present': embedding_index_status()['present'],
             'dimension': dimension,
         },
+        'unembedded_complete_count': unembedded_complete_count,
     })

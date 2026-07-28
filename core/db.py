@@ -91,3 +91,35 @@ def ensure_embedding_index(dimension):
 
     logger.info("ensure_embedding_index: resized to vector(%s); index_built=%s.", dimension, wants_index)
     return {"action": "rebuilt", "dimension": dimension, "index_built": wants_index}
+
+
+def find_unembedded_complete_bookmark_ids(Bookmark):
+    """IDs of 'complete' bookmarks that still have at least one chunk with a NULL
+    embedding -- the B-23 invariant violation: search only matches on embeddings,
+    so these are permanently invisible while the UI reports them as finished.
+    Takes the Bookmark model class as a parameter so this runs unchanged against
+    either the live model or a migration's historical model."""
+    return list(
+        Bookmark.objects.filter(processing_status='complete', chunk__embedding__isnull=True)
+        .distinct()
+        .values_list('id', flat=True)
+    )
+
+
+def repair_unembedded_complete_bookmarks(Bookmark):
+    """Requeue every 'complete' bookmark with unembedded chunks back to 'pending' so
+    the worker's normal pipeline reprocesses it from scratch. Idempotent -- no-ops
+    once nothing matches. Returns the list of repaired bookmark IDs."""
+    ids = find_unembedded_complete_bookmark_ids(Bookmark)
+    if ids:
+        Bookmark.objects.filter(id__in=ids).update(
+            processing_status='pending',
+            current_step=None,
+            processing_started_at=None,
+            processed_at=None,
+            retry_count=0,
+            failed_at=None,
+            processing_error='Requeued by repair_unembedded_complete_bookmarks: '
+                              'was complete with unembedded chunks.',
+        )
+    return ids

@@ -213,6 +213,27 @@ def run_pipeline(bookmark):
             bookmark.refresh_from_db()
             break
         elif report['stage'] == 'embedding' and report['status'] == 'success':
+            unembedded = Chunk.objects.filter(bookmark_id=bookmark.id, embedding__isnull=True).count()
+            if unembedded:
+                # Defense-in-depth: embedding() already double-checks this before
+                # reporting success, but 'complete' must never be reachable with
+                # unembedded chunks (B-23) -- search only matches on embeddings, so
+                # a bookmark in that state is permanently invisible with no signal.
+                logger.error(
+                    f'Invariant violation: bookmark {bookmark.id} embedding stage reported '
+                    f'success but {unembedded} chunk(s) still have no embedding; marking '
+                    f'failed instead of complete.'
+                )
+                Bookmark.objects.filter(id=bookmark.id).update(
+                    processing_status='failed',
+                    current_step=None,
+                    processing_started_at=None,
+                    failed_at='embedding',
+                    processing_error=f'{unembedded} chunk(s) still unembedded after '
+                                      f'embedding stage reported success',
+                )
+                break
+
             Bookmark.objects.filter(id=bookmark.id).update(
                 processing_status='complete',
                 current_step=None,

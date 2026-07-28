@@ -4,12 +4,12 @@ import tempfile
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
-from core.models import Bookmark
+from core.models import Bookmark, Chunk, Config
 from process.image_description import extract_image, extract_screenshot
 from process.media_download import decode_base64_image
-from process.pipeline import chunking
+from process.pipeline import chunking, run_pipeline
 from process.video_extraction import extract_video_twitter, extract_video_youtube
 
 
@@ -418,3 +418,63 @@ class ExtractionScreenshotTests(SimpleTestCase):
         result = extract_screenshot(bookmark)
         self.assertEqual(result['status'], 'failed')
         self.assertIn('no screenshot_base64 found in platform_metadata', result['error'])
+
+
+def _stage_report(stage, status='success', error=''):
+    return {'stage': stage, 'status': status, 'error': error}
+
+
+def _stub_stage(name):
+    """A stand-in pipeline stage with a real __name__ (run_pipeline reads
+    stage.__name__ to set current_step, which a bare Mock doesn't have)."""
+    def stage(bookmark):
+        return _stage_report(name)
+    stage.__name__ = name
+    return stage
+
+
+class RunPipelineEmbeddingInvariantTests(TestCase):
+    """B-23: 'complete' must never be reachable while a chunk is still
+    unembedded, even if the embedding stage itself reports success."""
+
+    def setUp(self):
+        # Migration 0003 already seeds Config(id=1); just set the field this test needs.
+        Config.objects.filter(id=1).update(embedding_locked=True)
+        self.bookmark = Bookmark.objects.create(
+            url='https://example.com',
+            platform=Bookmark.Platform.WEB,
+            processing_status=Bookmark.Processing_Status.PROCESSING,
+        )
+        self.chunk = Chunk.objects.create(
+            bookmark=self.bookmark,
+            text='some text',
+            chunk_type=Chunk.ChunkType.ARTICLE,
+            word_count=2,
+            embedding=None,
+        )
+
+    @patch('process.pipeline.embedding', new=_stub_stage('embedding'))
+    @patch('process.pipeline.tagging', new=_stub_stage('tagging'))
+    @patch('process.pipeline.chunking', new=_stub_stage('chunking'))
+    @patch('process.pipeline.extraction', new=_stub_stage('extraction'))
+    def test_bookmark_marked_failed_not_complete_when_chunk_still_unembedded(self):
+        result = run_pipeline(self.bookmark)
+
+        self.bookmark.refresh_from_db()
+        self.assertFalse(result)
+        self.assertEqual(self.bookmark.processing_status, Bookmark.Processing_Status.FAILED)
+        self.assertEqual(self.bookmark.failed_at, Bookmark.Stages.EMBEDDING)
+        self.assertIsNone(self.bookmark.processed_at)
+
+    @patch('process.pipeline.embedding', new=_stub_stage('embedding'))
+    @patch('process.pipeline.tagging', new=_stub_stage('tagging'))
+    @patch('process.pipeline.chunking', new=_stub_stage('chunking'))
+    @patch('process.pipeline.extraction', new=_stub_stage('extraction'))
+    def test_bookmark_marked_complete_when_all_chunks_embedded(self):
+        Chunk.objects.filter(id=self.chunk.id).update(embedding=[0.1] * 8)
+
+        result = run_pipeline(self.bookmark)
+
+        self.bookmark.refresh_from_db()
+        self.assertTrue(result)
+        self.assertEqual(self.bookmark.processing_status, Bookmark.Processing_Status.COMPLETE)
