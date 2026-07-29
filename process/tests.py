@@ -477,4 +477,91 @@ class RunPipelineEmbeddingInvariantTests(TestCase):
 
         self.bookmark.refresh_from_db()
         self.assertTrue(result)
-        self.assertEqual(self.bookmark.processing_status, Bookmark.Processing_Status.COMPLETE)
+
+
+class RunPipelineWorkerStatusTests(TestCase):
+    """B-9: record_worker_working must be re-touched at every stage boundary, not
+    just once when the bookmark is first claimed, so a hang stuck inside one stage
+    eventually shows up as stale rather than looking identical to a legitimately
+    slow bookmark."""
+
+    def setUp(self):
+        Config.objects.filter(id=1).update(embedding_locked=True)
+        self.bookmark = Bookmark.objects.create(
+            url='https://example.com',
+            platform=Bookmark.Platform.WEB,
+            processing_status=Bookmark.Processing_Status.PROCESSING,
+        )
+        Chunk.objects.create(
+            bookmark=self.bookmark,
+            text='some text',
+            chunk_type=Chunk.ChunkType.ARTICLE,
+            word_count=2,
+            embedding=[0.1] * 8,
+        )
+
+    @patch('process.pipeline.record_worker_working')
+    @patch('process.pipeline.embedding', new=_stub_stage('embedding'))
+    @patch('process.pipeline.tagging', new=_stub_stage('tagging'))
+    @patch('process.pipeline.chunking', new=_stub_stage('chunking'))
+    @patch('process.pipeline.extraction', new=_stub_stage('extraction'))
+    def test_record_worker_working_called_once_per_stage(self, mock_record):
+        run_pipeline(self.bookmark)
+
+        self.assertEqual(mock_record.call_count, 4)
+        for call in mock_record.call_args_list:
+            self.assertEqual(call.args[0], self.bookmark.id)
+
+
+class _StopLoop(Exception):
+    """Sentinel used to escape run_worker_loop's while True: in a test."""
+
+
+class RunWorkerLoopRetryTests(TestCase):
+    """B-9: an unhandled exception during run_pipeline() must not kill the worker
+    loop -- it should apply the same retry-count bookkeeping run_pipeline() uses
+    for ordinary stage failures, sleep, and keep looping."""
+
+    def _run_one_iteration(self, bookmark):
+        from process.management.commands.run_worker import Command
+
+        command = Command()
+        with patch('process.management.commands.run_worker.run_pipeline',
+                   side_effect=RuntimeError('boom')), \
+             patch('process.management.commands.run_worker.time.sleep',
+                   side_effect=_StopLoop), \
+             patch('core.metrics.set_process_role'), \
+             patch('core.metrics.init_session'):
+            with self.assertRaises(_StopLoop):
+                command.run_worker_loop()
+
+        bookmark.refresh_from_db()
+        return bookmark
+
+    def test_first_failure_requeues_as_pending_with_retry_count_one(self):
+        bookmark = Bookmark.objects.create(
+            url='https://example.com',
+            platform=Bookmark.Platform.WEB,
+            processing_status=Bookmark.Processing_Status.PENDING,
+            retry_count=0,
+        )
+
+        bookmark = self._run_one_iteration(bookmark)
+
+        self.assertEqual(bookmark.processing_status, Bookmark.Processing_Status.PENDING)
+        self.assertEqual(bookmark.retry_count, 1)
+        self.assertEqual(bookmark.failed_at, Bookmark.Stages.EXTRACTION)
+        self.assertIn('RuntimeError', bookmark.processing_error)
+
+    def test_third_failure_marks_failed_with_retry_count_three(self):
+        bookmark = Bookmark.objects.create(
+            url='https://example.com',
+            platform=Bookmark.Platform.WEB,
+            processing_status=Bookmark.Processing_Status.PENDING,
+            retry_count=2,
+        )
+
+        bookmark = self._run_one_iteration(bookmark)
+
+        self.assertEqual(bookmark.processing_status, Bookmark.Processing_Status.FAILED)
+        self.assertEqual(bookmark.retry_count, 3)

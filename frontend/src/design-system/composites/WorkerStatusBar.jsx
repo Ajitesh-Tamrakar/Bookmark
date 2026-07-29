@@ -4,12 +4,20 @@ import Switch from '../primitives/Switch';
 
 export default function WorkerStatusBar({
   polling,
+  workerStatus,
   lastRefreshText,
   concurrency,
   pollIntervalSec,
   onRefresh,
   onTogglePolling,
 }) {
+  const alive = workerStatus?.alive ?? false;
+  const workerLabel = !alive
+    ? 'Worker not responding'
+    : workerStatus.state === 'working'
+      ? 'Worker running'
+      : 'Worker idle';
+
   return (
     <Card variant="panel" className="flex items-center justify-between gap-4 flex-wrap">
       <div className="flex items-center gap-5 flex-wrap">
@@ -17,11 +25,11 @@ export default function WorkerStatusBar({
           <span
             className={[
               'w-[7px] h-[7px] rounded-full shrink-0',
-              polling ? 'bg-accent-success animate-pulse' : 'bg-text-faint',
+              alive ? 'bg-accent-success animate-pulse' : 'bg-accent-error',
             ].join(' ')}
           />
           <span className="text-[13px] font-medium text-text-primary">
-            {polling ? 'Worker running' : 'Polling paused'}
+            {workerLabel}
           </span>
         </div>
         <span className="font-mono text-[11.5px] text-text-faint">
@@ -42,7 +50,7 @@ export default function WorkerStatusBar({
         </Button>
 
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[11.5px] text-text-faint">polling</span>
+          <span className="font-mono text-[11.5px] text-text-faint">auto-refresh</span>
           <Switch checked={polling} onChange={onTogglePolling} />
         </div>
       </div>

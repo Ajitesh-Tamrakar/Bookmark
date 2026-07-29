@@ -1,7 +1,17 @@
-from django.test import TestCase
+from datetime import timedelta
 
-from core.db import find_unembedded_complete_bookmark_ids, repair_unembedded_complete_bookmarks
-from core.models import Bookmark, Chunk
+from django.test import TestCase
+from django.utils.timezone import now
+
+from core.db import (
+    WORKER_ALIVE_THRESHOLD_SEC,
+    find_unembedded_complete_bookmark_ids,
+    record_worker_idle,
+    record_worker_working,
+    repair_unembedded_complete_bookmarks,
+    worker_status,
+)
+from core.models import Bookmark, Chunk, WorkerStatus
 
 
 def _bookmark(**overrides):
@@ -80,3 +90,38 @@ class RepairUnembeddedCompleteBookmarksTests(TestCase):
         bookmark.refresh_from_db()
         self.assertEqual(repaired, [])
         self.assertEqual(bookmark.processing_status, Bookmark.Processing_Status.COMPLETE)
+
+
+class WorkerStatusTests(TestCase):
+    def test_worker_status_with_no_row_yet_reports_not_alive_without_raising(self):
+        status = worker_status()
+
+        self.assertEqual(status, {
+            'state': None, 'current_bookmark_id': None, 'updated_at': None, 'alive': False,
+        })
+
+    def test_record_worker_idle_reports_idle_and_alive(self):
+        record_worker_idle()
+
+        status = worker_status()
+        self.assertEqual(status['state'], WorkerStatus.State.IDLE)
+        self.assertIsNone(status['current_bookmark_id'])
+        self.assertTrue(status['alive'])
+
+    def test_record_worker_working_reports_working_bookmark(self):
+        bookmark = _bookmark()
+
+        record_worker_working(bookmark.id)
+
+        status = worker_status()
+        self.assertEqual(status['state'], WorkerStatus.State.WORKING)
+        self.assertEqual(status['current_bookmark_id'], str(bookmark.id))
+        self.assertTrue(status['alive'])
+
+    def test_stale_status_reports_not_alive(self):
+        record_worker_idle()
+        stale_time = now() - timedelta(seconds=WORKER_ALIVE_THRESHOLD_SEC + 1)
+        WorkerStatus.objects.filter(id=1).update(updated_at=stale_time)
+
+        status = worker_status()
+        self.assertFalse(status['alive'])

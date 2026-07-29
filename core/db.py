@@ -2,6 +2,9 @@ import logging
 import re
 
 from django.db import connection
+from django.utils.timezone import now as timezone_now
+
+from core.models import WorkerStatus
 
 logger = logging.getLogger(__name__)
 
@@ -123,3 +126,41 @@ def repair_unembedded_complete_bookmarks(Bookmark):
                               'was complete with unembedded chunks.',
         )
     return ids
+
+
+WORKER_ALIVE_THRESHOLD_SEC = 120
+
+
+def record_worker_idle():
+    """Called by the worker loop on every idle tick (no pending work). Direct ORM write from the
+    worker's own DB connection -- no HTTP hop through the backend."""
+    WorkerStatus.objects.update_or_create(
+        id=1, defaults={'state': WorkerStatus.State.IDLE, 'current_bookmark_id': None},
+    )
+
+
+def record_worker_working(bookmark_id):
+    """Called when the worker claims a bookmark, and again at every pipeline stage boundary for
+    that bookmark, so a hang stuck inside one stage eventually shows up as stale rather than
+    looking identical to a bookmark that's just legitimately slow (e.g. a large video)."""
+    WorkerStatus.objects.update_or_create(
+        id=1, defaults={'state': WorkerStatus.State.WORKING, 'current_bookmark_id': bookmark_id},
+    )
+
+
+def worker_status():
+    """Read-only snapshot for /pipeline/status/: {'state', 'current_bookmark_id', 'updated_at',
+    'alive'}. 'alive' is a freshness check against WORKER_ALIVE_THRESHOLD_SEC (is the worker still
+    ticking), not a live OS-level process check."""
+    try:
+        status = WorkerStatus.objects.get(id=1)
+    except WorkerStatus.DoesNotExist:
+        return {'state': None, 'current_bookmark_id': None, 'updated_at': None, 'alive': False}
+
+    alive = (timezone_now() - status.updated_at).total_seconds() < WORKER_ALIVE_THRESHOLD_SEC
+    return {
+        'state': status.state,
+        'current_bookmark_id': str(status.current_bookmark_id) if status.current_bookmark_id else None,
+        'updated_at': status.updated_at.isoformat(),
+        'alive': alive,
+    }

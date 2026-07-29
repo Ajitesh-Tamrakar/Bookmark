@@ -168,9 +168,11 @@ export default function PipelinePage() {
     const startedAt = r.processing_started_at
       ? new Date(r.processing_started_at).getTime()
       : new Date(r.saved_at).getTime();
+    const overThreshold = (clock - startedAt) > STALE_THRESHOLD_SEC * 1000;
     return {
       ...r,
-      stale: (clock - startedAt) > STALE_THRESHOLD_SEC * 1000,
+      stale: overThreshold,
+      stuck: overThreshold && !data.worker.alive,
       elapsed: fmtElapsed(clock - startedAt),
     };
   });
@@ -243,6 +245,7 @@ export default function PipelinePage() {
           <div className="flex-1 min-w-0 flex flex-col gap-11">
             <WorkerStatusBar
               polling={polling}
+              workerStatus={data.worker}
               lastRefreshText={fmtAgo(clock - lastRefresh)}
               concurrency={1}
               pollIntervalSec={POLL_INTERVAL_SEC}

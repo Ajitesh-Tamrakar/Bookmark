@@ -1,4 +1,5 @@
 from core.models import Bookmark, Tag, BookmarkTag, Chunk, Config
+from core.db import record_worker_working
 from core.metrics import timed_event
 from django.utils.timezone import now
 import logging
@@ -182,6 +183,7 @@ def run_pipeline(bookmark):
             break
 
         Bookmark.objects.filter(id=bookmark.id).update(current_step=stage.__name__)
+        record_worker_working(bookmark.id)
 
         with timed_event(
             "pipeline_stage",

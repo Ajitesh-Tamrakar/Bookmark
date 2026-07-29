@@ -155,10 +155,31 @@ class Config(models.Model):
     def save(self, *args, **kwargs):
         self.id = 1
         super().save(*args, **kwargs)
-    
+
     @classmethod
     def get(cls):
         return cls.objects.get(id=1)
 
     class Meta:
         db_table = 'config'
+
+
+class WorkerStatus(models.Model):
+
+    class State(models.TextChoices):
+        IDLE    = 'idle',    'Idle'
+        WORKING = 'working', 'Working'
+
+    id = models.IntegerField(primary_key=True, default=1)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.IDLE)
+    current_bookmark = models.ForeignKey(
+        'Bookmark', null=True, blank=True, on_delete=models.SET_NULL,
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.id = 1
+        super().save(*args, **kwargs)
+
+    class Meta:
+        db_table = 'worker_status'

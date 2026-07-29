@@ -5,7 +5,7 @@ from core.registry import EMBEDDING_REGISTRY, GENERATION_REGISTRY
 from django.views.decorators.csrf import csrf_exempt
 from core import pull_manager
 from core import secrets as api_key_store
-from core.db import ensure_embedding_index
+from core.db import ensure_embedding_index, worker_status
 import json
 import os
 import re
@@ -262,6 +262,7 @@ def pipeline_status(request):
         'failed': failed,
         'complete_count': complete_count,
         'temp_files': temp_files,
+        'worker': worker_status(),
     })
 
 

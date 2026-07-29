@@ -39,7 +39,9 @@ FROM bookmarks WHERE processing_status = 'processing' ORDER BY processing_starte
                 <div className="min-w-0 flex flex-col gap-[3px]">
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] text-text-primary truncate">{r.title}</span>
-                    {r.stale && (
+                    {r.stuck ? (
+                      <Badge tone="error" size="xs" className="shrink-0">stuck</Badge>
+                    ) : r.stale && (
                       <Badge tone="warning" size="xs" className="shrink-0">stale</Badge>
                     )}
                   </div>
@@ -68,7 +70,7 @@ FROM bookmarks WHERE processing_status = 'processing' ORDER BY processing_starte
                 <div
                   className={[
                     'font-mono text-[12.5px] tabular-nums text-right',
-                    r.stale ? 'text-accent-warning-text' : 'text-text-inverse-muted',
+                    r.stuck ? 'text-accent-error' : r.stale ? 'text-accent-warning-text' : 'text-text-inverse-muted',
                   ].join(' ')}
                 >
                   {r.elapsed}
