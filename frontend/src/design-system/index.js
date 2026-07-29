@@ -19,7 +19,6 @@ export { default as ResultCard } from './composites/ResultCard';
 export { default as SearchInput } from './composites/SearchInput';
 export { default as TagRail } from './composites/TagRail';
 export { default as ResultsHeader } from './composites/ResultsHeader';
-export { default as FallbackBanner } from './composites/FallbackBanner';
 export { default as EmptyState } from './composites/EmptyState';
 export { default as DeleteConfirmModal } from './composites/DeleteConfirmModal';
 

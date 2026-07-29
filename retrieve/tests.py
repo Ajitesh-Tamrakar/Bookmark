@@ -151,3 +151,31 @@ class SearchPaginationTests(TestCase):
         self.assertEqual(len(data['results']), self.FIXTURE_SIZE)
         self.assertGreater(len(data['results']), 25)
         self.assertFalse(data['has_more'])
+
+
+class SearchRelevanceFilterTests(TestCase):
+    """B-47: the fast path should drop chunks at or beyond MAX_MATCH_DISTANCE;
+    deep search should not."""
+
+    def setUp(self):
+        self.client = Client()
+        Config.objects.filter(id=1).update(setup_complete=True)
+        self.close_bookmark = _bookmark(url='https://example.com/close')
+        _chunk(self.close_bookmark, embedding=[1, 0, 0, 0, 0, 0, 0, 0])
+        self.far_bookmark = _bookmark(url='https://example.com/far')
+        _chunk(self.far_bookmark, embedding=[0, 1, 0, 0, 0, 0, 0, 0])
+
+    @patch('retrieve.views.embed_texts', return_value=[[1, 0, 0, 0, 0, 0, 0, 0]])
+    def test_fast_search_excludes_result_beyond_max_match_distance(self, mock_embed):
+        response = self.client.get('/retrieve/search/?q=test')
+        data = response.json()
+        ids = [r['id'] for r in data['results']]
+        self.assertIn(str(self.close_bookmark.id), ids)
+        self.assertNotIn(str(self.far_bookmark.id), ids)
+
+    @patch('retrieve.views.embed_texts', return_value=[[1, 0, 0, 0, 0, 0, 0, 0]])
+    def test_deep_search_includes_result_beyond_max_match_distance(self, mock_embed):
+        response = self.client.get('/retrieve/search/?q=test&deep=1')
+        data = response.json()
+        ids = [r['id'] for r in data['results']]
+        self.assertIn(str(self.far_bookmark.id), ids)

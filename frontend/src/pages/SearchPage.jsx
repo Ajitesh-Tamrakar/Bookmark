@@ -5,19 +5,14 @@ import {
   SearchInput,
   TagRail,
   ResultsHeader,
-  FallbackBanner,
   ResultCard,
   EmptyState,
   DeleteConfirmModal,
   Badge,
   Callout,
+  Button,
 } from '../design-system';
 import { redirectIfSetupRequired } from '../utils/setupGuard';
-
-// Cosine distance thresholds (0 = identical, 1 = orthogonal).
-// NORMAL: good semantic match. BROAD: looser, shown in approx mode.
-const NORMAL_THRESHOLD = 0.35;
-const BROAD_THRESHOLD = 0.65;
 
 export default function SearchPage() {
   const [inputValue, setInputValue] = useState('');
@@ -121,17 +116,13 @@ export default function SearchPage() {
         throw new Error(data.message || `Server error ${res.status}`);
       }
 
+      // B-47: the backend now only returns rows under MAX_MATCH_DISTANCE (or,
+      // for deep=1, the closest N regardless of distance) -- so anything that
+      // comes back is a match. No client-side banding left to do.
       const items = data.results || [];
-      const normal = items.filter((r) => r.distance < NORMAL_THRESHOLD);
-      const approx = items.filter((r) => r.distance >= NORMAL_THRESHOLD && r.distance < BROAD_THRESHOLD);
-
-      if (normal.length > 0) {
-        setResults({ mode: 'search-normal', items: normal });
-      } else if (approx.length > 0) {
-        setResults({ mode: 'search-approx', items: approx.slice(0, 8) });
-      } else {
-        setResults({ mode: 'search-nomatch', items: [] });
-      }
+      setResults(items.length > 0
+        ? { mode: 'search-results', items }
+        : { mode: 'search-nomatch', items: [] });
     } catch (e) {
       setError(e.message);
       setResults({ mode: null, items: [] });
@@ -233,9 +224,7 @@ export default function SearchPage() {
 
   let headLabel = '';
   let headSub = '';
-  let showFallback = false;
   let emptyVariant = null;
-  let fallbackSuggested = [];
   let noMatchSuggested = [];
 
   if (mode === 'recent') {
@@ -252,20 +241,9 @@ export default function SearchPage() {
       headLabel = 'BROWSE';
       headSub = `· ${tagPhrase} · ${items.length} item${items.length === 1 ? '' : 's'} · by date saved`;
     }
-  } else if (mode === 'search-normal') {
+  } else if (mode === 'search-results') {
     headLabel = hasTags ? 'SEARCH IN TAGS' : 'SEARCH';
     headSub = `${hasTags ? `· ${tagPhrase} ` : '· '}${qShow} · ${items.length} result${items.length === 1 ? '' : 's'}`;
-  } else if (mode === 'search-approx') {
-    showFallback = true;
-    headLabel = 'APPROXIMATE';
-    headSub = `· ${qShow} · no exact matches · ${items.length} close`;
-    const counts = {};
-    items.forEach((r) =>
-      r.tags?.forEach((t) => {
-        if (!selectedTags.includes(t.name)) counts[t.name] = (counts[t.name] || 0) + 1;
-      })
-    );
-    fallbackSuggested = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
   } else if (mode === 'search-nomatch') {
     emptyVariant = 'no-match';
     headLabel = hasTags ? 'SEARCH IN TAGS' : 'SEARCH';
@@ -277,8 +255,8 @@ export default function SearchPage() {
   }
 
   const showRail = allTags.length > 0;
-  const showScore = mode === 'search-normal' || mode === 'search-approx';
-  const showDeepSearchOption = (mode === 'search-approx' || mode === 'search-nomatch') && !deepSearch;
+  const showScore = mode === 'search-results';
+  const showDeepSearchOption = mode === 'search-nomatch' && !deepSearch;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -378,12 +356,8 @@ export default function SearchPage() {
             {/* Results header */}
             {headLabel && <ResultsHeader label={headLabel} sub={headSub} />}
 
-            {/* Fallback banner (approx mode) */}
-            {showFallback && (
-              <FallbackBanner suggestedTags={fallbackSuggested} onPickTag={pickTag} />
-            )}
-
-            {/* Empty states */}
+            {/* Empty states (no-match carries the Deep search CTA inline via
+                the action prop -- B-47 removed the separate approx tier) */}
             {emptyVariant && (
               <EmptyState
                 variant={emptyVariant}
@@ -391,21 +365,12 @@ export default function SearchPage() {
                 suggestedTags={noMatchSuggested}
                 onClearAll={clearAllTags}
                 onPickTag={pickTag}
+                action={showDeepSearchOption && (
+                  <Button variant="primary" onClick={handleDeepSearch} disabled={loading}>
+                    Deep search — check every saved item, no shortcuts
+                  </Button>
+                )}
               />
-            )}
-
-            {/* Deep search escape hatch (B-13) -- re-runs against every embedded
-                chunk with no candidate cap, for when the fast default search
-                doesn't turn up something the user knows is saved */}
-            {showDeepSearchOption && (
-              <button
-                type="button"
-                onClick={handleDeepSearch}
-                disabled={loading}
-                className="mt-3 inline-flex items-center gap-2 bg-bg-raised border border-border-default rounded-[8px] text-text-secondary font-mono text-[11.5px] tracking-[0.04em] px-3 py-[7px] cursor-pointer hover:border-border-strong hover:text-text-primary hover:bg-bg-hover-strong transition-all disabled:opacity-50"
-              >
-                Deep search — check every saved item, no shortcuts
-              </button>
             )}
 
             {/* Result cards */}

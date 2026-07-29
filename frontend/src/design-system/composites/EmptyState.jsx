@@ -24,7 +24,7 @@ const VARIANTS = {
   'no-match': {
     icon: SEARCH_ICON,
     title: 'Nothing close to that',
-    text: "Even after broadening the similarity threshold, nothing in your library resembles this query. Your library isn't empty — this search just has no neighbours. Try a different phrasing, or browse by tag.",
+    text: "Nothing in your library is a close enough match for this query. Your library isn't empty — try Deep search below to check every saved item with no shortcuts, rephrase, or browse by tag.",
   },
   'empty-browse': {
     icon: LIST_ICON,
@@ -46,7 +46,7 @@ function SuggChip({ name, onClick }) {
   );
 }
 
-export default function EmptyState({ variant, tagPhrase, suggestedTags = [], onClearAll, onPickTag }) {
+export default function EmptyState({ variant, tagPhrase, suggestedTags = [], onClearAll, onPickTag, action }) {
   const v = VARIANTS[variant] || VARIANTS['no-match'];
 
   return (
@@ -81,6 +81,10 @@ export default function EmptyState({ variant, tagPhrase, suggestedTags = [], onC
             <SuggChip key={name} name={name} onClick={() => onPickTag(name)} />
           ))}
         </div>
+      )}
+
+      {variant === 'no-match' && action && (
+        <div className="mt-4">{action}</div>
       )}
     </div>
   );

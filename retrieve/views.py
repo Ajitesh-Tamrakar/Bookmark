@@ -34,6 +34,16 @@ TAG_FILTERED_CANDIDATE_K = 1000
 DEFAULT_RESULT_LIMIT = 25
 MAX_RESULT_LIMIT = 100
 
+# B-47: a single relevance cutoff. Below this cosine distance, a result counts
+# as a match; at or above it, the fast path drops it and the user is pointed at
+# Deep search instead (see search() below). Ships at the same value the old
+# client-side NORMAL_THRESHOLD/BROAD_THRESHOLD split used as its outer bound --
+# moving it here does not change matching behavior by itself. Recalibrate by
+# running `manage.py run_golden_eval` against a real golden set (see
+# evaluate/management/commands/run_golden_eval.py) and updating this constant;
+# do not guess a new value without measuring one.
+MAX_MATCH_DISTANCE = 0.65
+
 
 def _best_chunks(query_embedding):
     """Return [(bookmark_id_str, distance, timestamp_seconds)] via DISTINCT ON."""
@@ -149,10 +159,15 @@ def search(request):
         query_vector = embed_texts([q], task='query')[0]
 
         if deep:
+            # Deep search intentionally skips MAX_MATCH_DISTANCE -- its entire
+            # purpose is showing the closest N regardless of how weak the
+            # match is, for when the fast path's cutoff rejects something the
+            # user knows is saved.
             rows = _best_chunks(query_vector)
         else:
             candidate_k = TAG_FILTERED_CANDIDATE_K if tag_list else DEFAULT_CANDIDATE_K
             rows = _best_chunks_fast(query_vector, candidate_k=candidate_k, ef_search=candidate_k)
+            rows = [r for r in rows if r[1] < MAX_MATCH_DISTANCE]
 
         # Tag filtering (unchanged logic -- still Python-side; see the
         # implementing doc's "out of scope" note on moving this into SQL)
@@ -201,7 +216,11 @@ def search(request):
 
         p["result_count"] = len(results)
         p["top_score"] = results[0]['distance'] if results else None
-        p["fallback_triggered"] = False
+        # m-15: real signal instead of a hardcoded False. True exactly when the
+        # fast path came up empty and the user is being pointed at Deep search;
+        # not set during a deep search itself (that's the fallback having
+        # already happened, not being triggered).
+        p["fallback_triggered"] = (not deep) and len(results) == 0
 
     if Config.get().dev_mode:
         top_bookmark_id = results[0]['id'] if results else None

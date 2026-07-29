@@ -61,7 +61,6 @@ function openUrl(item) {
 
 export default function ResultCard({ item, showScore, onDelete, onPickTag }) {
   const plat = PLATFORM[item.platform] || PLATFORM.web;
-  const isApprox = showScore && item.distance >= 0.35;
   const scoreNum = showScore ? Math.max(0, Math.round((1 - Math.min(item.distance, 1)) * 100)) : null;
   const showTs = item.platform === 'youtube' && item.timestamp_seconds != null && showScore;
 
@@ -80,9 +79,6 @@ export default function ResultCard({ item, showScore, onDelete, onPickTag }) {
           <span className="text-[15px] font-medium text-text-primary tracking-tight leading-[1.3]">
             {item.title || getDomain(item.url)}
           </span>
-          {isApprox && (
-            <Badge tone="warning" size="xxs">approx</Badge>
-          )}
         </div>
 
         <div className="flex items-center gap-2 font-mono text-[11.5px] text-text-faint min-w-0 flex-wrap">
@@ -130,11 +126,11 @@ export default function ResultCard({ item, showScore, onDelete, onPickTag }) {
       <div className="flex flex-col items-end gap-3 flex-none">
         {showScore ? (
           <div className="flex flex-col items-end gap-[5px]">
-            <span className={`font-mono text-[13px] tabular-nums ${isApprox ? 'text-text-faint' : 'text-text-secondary'}`}>
+            <span className="font-mono text-[13px] tabular-nums text-text-secondary">
               {scoreNum}%
             </span>
             <div className="w-[56px]">
-              <ProgressBar percent={scoreNum} fill={isApprox ? 'faint' : 'primary'} />
+              <ProgressBar percent={scoreNum} fill="primary" />
             </div>
           </div>
         ) : (
