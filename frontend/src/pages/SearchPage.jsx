@@ -28,6 +28,7 @@ export default function SearchPage() {
   // multiTagLogic is an open product decision; defaulting to 'and'
   const [multiTagLogic] = useState('and');
   const [confirm, setConfirm] = useState(null); // { id, title }
+  const [deepSearch, setDeepSearch] = useState(false);
 
   const [allTags, setAllTags] = useState([]);
   const [results, setResults] = useState({ mode: null, items: [] });
@@ -102,15 +103,17 @@ export default function SearchPage() {
     }
   }
 
-  async function fetchSearch(q, tagList) {
+  async function fetchSearch(q, tagList, deep = false) {
     setLoading(true);
     setError(null);
+    setDeepSearch(deep);
     try {
       const params = new URLSearchParams({ q });
       if (tagList.length) {
         params.set('tags', tagList.join(','));
         params.set('logic', multiTagLogic);
       }
+      if (deep) params.set('deep', '1');
       const res = await fetch(`/retrieve/search/?${params}`);
       const data = await res.json();
       if (!res.ok) {
@@ -169,6 +172,10 @@ export default function SearchPage() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setInputValue('');
     setQuery('');
+  }
+
+  function handleDeepSearch() {
+    fetchSearch(query, selectedTags, true);
   }
 
   // ---------------------------------------------------------------------------
@@ -271,6 +278,7 @@ export default function SearchPage() {
 
   const showRail = allTags.length > 0;
   const showScore = mode === 'search-normal' || mode === 'search-approx';
+  const showDeepSearchOption = (mode === 'search-approx' || mode === 'search-nomatch') && !deepSearch;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -384,6 +392,20 @@ export default function SearchPage() {
                 onClearAll={clearAllTags}
                 onPickTag={pickTag}
               />
+            )}
+
+            {/* Deep search escape hatch (B-13) -- re-runs against every embedded
+                chunk with no candidate cap, for when the fast default search
+                doesn't turn up something the user knows is saved */}
+            {showDeepSearchOption && (
+              <button
+                type="button"
+                onClick={handleDeepSearch}
+                disabled={loading}
+                className="mt-3 inline-flex items-center gap-2 bg-bg-raised border border-border-default rounded-[8px] text-text-secondary font-mono text-[11.5px] tracking-[0.04em] px-3 py-[7px] cursor-pointer hover:border-border-strong hover:text-text-primary hover:bg-bg-hover-strong transition-all disabled:opacity-50"
+              >
+                Deep search — check every saved item, no shortcuts
+              </button>
             )}
 
             {/* Result cards */}

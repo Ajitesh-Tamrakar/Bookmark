@@ -3,7 +3,7 @@ import json
 import time
 
 from django.http import JsonResponse
-from django.db import connection
+from django.db import connection, transaction
 from django.db.models import Count
 from django.views.decorators.csrf import csrf_exempt
 from core.db import embedding_index_status
@@ -22,6 +22,18 @@ logger = logging.getLogger(__name__)
 NOTE_EMBED_ATTEMPTS = 3
 NOTE_EMBED_RETRY_DELAY_SECONDS = 0.5
 
+# B-13: _best_chunks_fast()'s two-stage search. candidate_k is how many nearest
+# chunks (system-wide, before grouping by bookmark) the HNSW index is asked for;
+# ef_search is set to match it so the ANN search is actually thorough enough to
+# fill that candidate set well (see _best_chunks_fast's docstring). Widened for
+# tag-filtered searches since tag filtering still happens in Python afterward,
+# over whatever this pool contains -- see the "out of scope" note in the
+# implementing doc about why this is a stopgap, not a full fix, for that case.
+DEFAULT_CANDIDATE_K = 200
+TAG_FILTERED_CANDIDATE_K = 1000
+DEFAULT_RESULT_LIMIT = 25
+MAX_RESULT_LIMIT = 100
+
 
 def _best_chunks(query_embedding):
     """Return [(bookmark_id_str, distance, timestamp_seconds)] via DISTINCT ON."""
@@ -37,6 +49,41 @@ def _best_chunks(query_embedding):
     """
     with connection.cursor() as cur:
         cur.execute(sql, [vec, vec])
+        return cur.fetchall()
+
+
+def _best_chunks_fast(query_embedding, candidate_k=DEFAULT_CANDIDATE_K, ef_search=DEFAULT_CANDIDATE_K):
+    """Two-stage ANN search: first ask for the `candidate_k` nearest chunks
+    system-wide (a plain top-K ORDER BY -- the shape an HNSW index can actually
+    serve, unlike _best_chunks's grouped DISTINCT ON), then keep only the closest
+    chunk per bookmark from that already-small pool. This is the default/fast
+    path used by search(); _best_chunks() (unbounded, exact) stays unchanged and
+    is used for deep search and run_golden_eval.
+
+    ef_search must be set via SET LOCAL inside the *same* transaction as the
+    query below -- outside an explicit transaction, each cursor.execute() is its
+    own implicit transaction in Postgres, so a SET LOCAL in one execute() call
+    would not carry over to the next. Postgres's SET command also does not
+    accept bound parameters (no `SET x = %s`), so ef_search is inlined as a
+    validated int rather than passed as a query param -- safe here because it is
+    always DEFAULT_CANDIDATE_K or TAG_FILTERED_CANDIDATE_K, never user input.
+    """
+    vec = '[' + ','.join(str(x) for x in query_embedding) + ']'
+    sql = """
+        WITH nearest AS (
+            SELECT bookmark_id, (embedding <=> %s::vector)::float AS distance, timestamp_seconds
+            FROM chunks
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s
+        )
+        SELECT DISTINCT ON (bookmark_id) bookmark_id::text, distance, timestamp_seconds
+        FROM nearest
+        ORDER BY bookmark_id, distance
+    """
+    with transaction.atomic(), connection.cursor() as cur:
+        cur.execute(f"SET LOCAL hnsw.ef_search = {int(ef_search)};")
+        cur.execute(sql, [vec, vec, candidate_k])
         return cur.fetchall()
 
 
@@ -81,18 +128,34 @@ def search(request):
     tags_param = request.GET.get('tags', '').strip()
     tag_list = [t.strip() for t in tags_param.split(',') if t.strip()] if tags_param else []
     logic = request.GET.get('logic', 'and')
+    deep = request.GET.get('deep', '').strip().lower() in ('1', 'true')
+
+    try:
+        limit = max(1, min(int(request.GET.get('limit', DEFAULT_RESULT_LIMIT)), MAX_RESULT_LIMIT))
+    except ValueError:
+        limit = DEFAULT_RESULT_LIMIT
+    try:
+        offset = max(0, int(request.GET.get('offset', 0)))
+    except ValueError:
+        offset = 0
 
     query_hash = hashlib.sha256(q.encode()).hexdigest()[:16]
     results = []
 
     with timed_event(
         "search_query",
-        payload={"query_hash": query_hash, "used_tag_filter": bool(tag_list)},
+        payload={"query_hash": query_hash, "used_tag_filter": bool(tag_list), "deep": deep},
     ) as p:
         query_vector = embed_texts([q], task='query')[0]
-        rows = _best_chunks(query_vector)
 
-        # Tag filtering
+        if deep:
+            rows = _best_chunks(query_vector)
+        else:
+            candidate_k = TAG_FILTERED_CANDIDATE_K if tag_list else DEFAULT_CANDIDATE_K
+            rows = _best_chunks_fast(query_vector, candidate_k=candidate_k, ef_search=candidate_k)
+
+        # Tag filtering (unchanged logic -- still Python-side; see the
+        # implementing doc's "out of scope" note on moving this into SQL)
         if tag_list:
             if logic == 'or':
                 allowed = set(
@@ -113,8 +176,11 @@ def search(request):
 
         rows.sort(key=lambda r: r[1])
 
-        bid_list = [r[0] for r in rows]
-        chunk_map = {r[0]: {'distance': r[1], 'timestamp_seconds': r[2]} for r in rows}
+        page = rows[offset:offset + limit]
+        has_more = (offset + limit) < len(rows)
+
+        bid_list = [r[0] for r in page]
+        chunk_map = {r[0]: {'distance': r[1], 'timestamp_seconds': r[2]} for r in page}
 
         b_map = {
             str(b['id']): b
@@ -141,7 +207,7 @@ def search(request):
         top_bookmark_id = results[0]['id'] if results else None
         SearchFeedback.objects.create(query_text=q, shown_bookmark_id=top_bookmark_id)
 
-    return JsonResponse({'query': q, 'results': results})
+    return JsonResponse({'query': q, 'results': results, 'has_more': has_more})
 
 
 def tags_list(request):

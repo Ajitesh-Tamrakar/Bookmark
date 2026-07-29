@@ -118,3 +118,36 @@ class BookmarkNoteEmbedRetryTests(TestCase):
 
         chunk = Chunk.objects.get(bookmark=self.bookmark, chunk_type=Chunk.ChunkType.NOTE)
         self.assertIsNotNone(chunk.embedding)
+
+
+class SearchPaginationTests(TestCase):
+    """B-13: search() should cap results to a page instead of returning every
+    embedded bookmark, and deep=1 should be able to page past that cap."""
+
+    FIXTURE_SIZE = 30
+
+    def setUp(self):
+        self.client = Client()
+        Config.objects.filter(id=1).update(setup_complete=True)
+        for i in range(self.FIXTURE_SIZE):
+            bookmark = _bookmark(url=f'https://example.com/{i}')
+            _chunk(bookmark, embedding=[0.1 + i * 0.001] * 8)
+
+    @patch('retrieve.views.embed_texts', return_value=[[0.1] * 8])
+    def test_default_search_caps_at_default_limit_with_has_more(self, mock_embed):
+        response = self.client.get('/retrieve/search/?q=test')
+
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data['results']), 25)
+        self.assertTrue(data['has_more'])
+
+    @patch('retrieve.views.embed_texts', return_value=[[0.1] * 8])
+    def test_deep_search_with_higher_limit_returns_more_than_default(self, mock_embed):
+        response = self.client.get('/retrieve/search/?q=test&deep=1&limit=100')
+
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data['results']), self.FIXTURE_SIZE)
+        self.assertGreater(len(data['results']), 25)
+        self.assertFalse(data['has_more'])
