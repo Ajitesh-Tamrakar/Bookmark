@@ -1,11 +1,14 @@
 (function () {
     const AUTO_DISMISS_MS = 3000;
     const SETUP_REQUIRED_DISMISS_MS = 5000;
+    const ERROR_DISMISS_MS = 10000;
     const PANEL_SWAP_MS = 280;
 
     let overlayEl = null;
     let noteInputEl = null;
     let hideTimer = null;
+    let hideDeadline = null;
+    let hidePausedRemaining = null;
     let currentBookmarkId = null;
 
     function buildOverlay() {
@@ -63,6 +66,22 @@
                         <button class="bm-close" type="button" aria-label="Dismiss">×</button>
                     </div>
                     <div class="setup-msg"></div>
+                    <a class="setup-link" href="http://localhost:8081" target="_blank" rel="noopener">Click here to complete setup →</a>
+                </div>
+            </div>
+            <div class="bm-panel" data-panel="error">
+                <div class="conf-inner">
+                    <div class="conf-head">
+                        <svg width="14" height="14" viewBox="0 0 24 24" style="flex:0 0 auto">
+                            <path d="M12 2L1 21h22L12 2z" fill="none" stroke="#e5484d" stroke-width="1.6" stroke-linejoin="round"/>
+                            <path d="M12 9v5" stroke="#e5484d" stroke-width="1.8" stroke-linecap="round"/>
+                            <circle cx="12" cy="17" r="1" fill="#e5484d"/>
+                        </svg>
+                        <span class="conf-title">Couldn't save</span>
+                        <button class="bm-close" type="button" aria-label="Dismiss">×</button>
+                    </div>
+                    <div class="error-msg"></div>
+                    <div class="error-actions"></div>
                 </div>
             </div>
         `;
@@ -122,13 +141,44 @@
             clearTimeout(hideTimer);
             hideTimer = null;
         }
+        hidePausedRemaining = null;
         toast.classList.remove("bm-open");
         currentBookmarkId = null;
+    }
+
+    function scheduleHide(toast, ms) {
+        if (hideTimer) clearTimeout(hideTimer);
+        hideDeadline = Date.now() + ms;
+        hideTimer = setTimeout(() => {
+            hideTimer = null;
+            dismiss(toast);
+        }, ms);
+    }
+
+    function pauseHide() {
+        if (!hideTimer) return;
+        clearTimeout(hideTimer);
+        hideTimer = null;
+        hidePausedRemaining = Math.max(0, hideDeadline - Date.now());
+    }
+
+    function resumeHide(toast) {
+        if (hidePausedRemaining == null) return;
+        const remaining = hidePausedRemaining;
+        hidePausedRemaining = null;
+        scheduleHide(toast, remaining);
     }
 
     function attachListeners(toast) {
         if (toast.dataset.bmWired) return;
         toast.dataset.bmWired = "1";
+
+        toast.addEventListener("mouseenter", () => {
+            if (toast.querySelector('[data-panel="error"].bm-active')) pauseHide();
+        });
+        toast.addEventListener("mouseleave", () => {
+            if (toast.querySelector('[data-panel="error"].bm-active')) resumeHide(toast);
+        });
 
         toast.querySelectorAll(".bm-close").forEach((btn) => {
             btn.addEventListener("click", () => dismiss(toast));
@@ -183,11 +233,7 @@
         toast.classList.add("bm-open");
         restartDrain(toast);
 
-        if (hideTimer) clearTimeout(hideTimer);
-        hideTimer = setTimeout(() => {
-            hideTimer = null;
-            dismiss(toast);
-        }, AUTO_DISMISS_MS);
+        scheduleHide(toast, AUTO_DISMISS_MS);
     };
 
     window.bmShowSetupRequired = function (message) {
@@ -204,10 +250,62 @@
 
         toast.classList.add("bm-open");
 
-        if (hideTimer) clearTimeout(hideTimer);
-        hideTimer = setTimeout(() => {
-            hideTimer = null;
-            dismiss(toast);
-        }, SETUP_REQUIRED_DISMISS_MS);
+        scheduleHide(toast, SETUP_REQUIRED_DISMISS_MS);
+    };
+
+    window.bmErrorMessage = function (response) {
+        if (!response || response.status === "FETCH_ERROR") {
+            return "Couldn't save this — is Internet Expedition running? Make sure Docker is started, then try again.";
+        }
+        if (response.code === 400) {
+            return "This page couldn't be read.";
+        }
+        return "Something went wrong saving this. It wasn't saved.";
+    };
+
+    window.bmShowError = function (response) {
+        currentBookmarkId = null;
+        const toast = getOverlay();
+
+        const message = window.bmErrorMessage(response);
+        const isFetchError = !response || response.status === "FETCH_ERROR";
+        const isInvalidPayload = !isFetchError && response.code === 400;
+
+        toast.querySelector(".error-msg").textContent = message;
+
+        const actions = toast.querySelector(".error-actions");
+        actions.innerHTML = "";
+
+        if (isFetchError) {
+            const link = document.createElement("a");
+            link.href = "http://localhost:8081";
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.className = "error-action-link";
+            link.textContent = "Open Internet Expedition";
+            actions.appendChild(link);
+        } else if (!isInvalidPayload) {
+            const detail = typeof response.error === "string"
+                ? response.error
+                : (response.error?.error || JSON.stringify(response.error || {}));
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "error-copy-btn";
+            btn.textContent = "Copy details";
+            btn.addEventListener("click", () => {
+                navigator.clipboard.writeText(detail).catch(() => {});
+                btn.textContent = "Copied";
+                setTimeout(() => { btn.textContent = "Copy details"; }, 1500);
+            });
+            actions.appendChild(btn);
+        }
+
+        toast.querySelectorAll(".bm-panel").forEach((p) => {
+            p.classList.toggle("bm-active", p.dataset.panel === "error");
+        });
+        toast.style.height = "";
+
+        toast.classList.add("bm-open");
+        scheduleHide(toast, ERROR_DISMISS_MS);
     };
 })();

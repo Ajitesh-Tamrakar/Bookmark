@@ -7,7 +7,7 @@ const DEBUG = false;
    SAVED-STATE HELPER (shared, duplicated per content script)
 =========================== */
 
-function bmSetState(btn, next) { // 'saving' | 'saved' | 'error'
+function bmSetState(btn, next, message) { // 'saving' | 'saved' | 'error'
     if (!btn) return;
     btn.classList.remove("bm-saving", "bm-saved", "bm-error");
     const label = btn.querySelector(".bm-label");
@@ -17,7 +17,7 @@ function bmSetState(btn, next) { // 'saving' | 'saved' | 'error'
         // after a prior success leaves aria-pressed="true"/"Saved" under a red stroke
         btn.classList.add("bm-error");
         btn.setAttribute("aria-pressed", "false");
-        btn.setAttribute("aria-label", "Save to Bookmark");
+        btn.setAttribute("aria-label", message || "Save to Bookmark");
         if (label) label.textContent = "Save";
     }
     if (next === "saved") {
@@ -391,11 +391,15 @@ function injectButton(post, index) {
             if (chrome.runtime.lastError) {
                 error("Runtime Error:", chrome.runtime.lastError);
             }
-            bmSetState(btn, response?.status === "OK" ? "saved" : "error");
             if (response?.status === "OK") {
+                bmSetState(btn, "saved");
                 window.bmShowConfirmation(response.data?.bookmark_id);
             } else if (response?.setupRequired) {
+                bmSetState(btn, "error");
                 window.bmShowSetupRequired(response.message);
+            } else {
+                bmSetState(btn, "error", window.bmErrorMessage(response));
+                window.bmShowError(response);
             }
         });
     });
