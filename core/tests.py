@@ -1,10 +1,14 @@
 from datetime import timedelta
 
+import psycopg2
+from django.conf import settings
 from django.test import TestCase
 from django.utils.timezone import now
 
 from core.db import (
     WORKER_ALIVE_THRESHOLD_SEC,
+    WORKER_SINGLETON_LOCK_KEY,
+    acquire_worker_singleton_lock,
     find_unembedded_complete_bookmark_ids,
     record_worker_idle,
     record_worker_working,
@@ -12,6 +16,16 @@ from core.db import (
     worker_status,
 )
 from core.models import Bookmark, Chunk, WorkerStatus
+
+
+def _raw_connection():
+    """A second, independent DB connection -- distinct from Django's default test
+    connection -- so advisory-lock contention can actually be observed."""
+    db = settings.DATABASES['default']
+    return psycopg2.connect(
+        dbname=db['NAME'], user=db['USER'], password=db['PASSWORD'],
+        host=db['HOST'], port=db['PORT'],
+    )
 
 
 def _bookmark(**overrides):
@@ -125,3 +139,44 @@ class WorkerStatusTests(TestCase):
 
         status = worker_status()
         self.assertFalse(status['alive'])
+
+
+class WorkerSingletonLockTests(TestCase):
+    """Advisory locks are session-scoped, not transactional -- Django's TestCase
+    transaction rollback won't release one taken on the shared default connection,
+    so explicitly release it here to avoid leaking into other tests."""
+
+    def tearDown(self):
+        from django.db import connection
+        with connection.cursor() as cur:
+            cur.execute("SELECT pg_advisory_unlock(%s);", [WORKER_SINGLETON_LOCK_KEY])
+
+    def test_acquires_on_first_call(self):
+        self.assertTrue(acquire_worker_singleton_lock())
+
+    def test_second_connection_is_blocked_while_first_holds_it(self):
+        self.assertTrue(acquire_worker_singleton_lock())
+
+        other = _raw_connection()
+        try:
+            with other.cursor() as cur:
+                cur.execute("SELECT pg_try_advisory_lock(%s);", [WORKER_SINGLETON_LOCK_KEY])
+                self.assertFalse(cur.fetchone()[0])
+        finally:
+            other.close()
+
+    def test_second_connection_acquires_after_first_releases(self):
+        self.assertTrue(acquire_worker_singleton_lock())
+
+        from django.db import connection
+        with connection.cursor() as cur:
+            cur.execute("SELECT pg_advisory_unlock(%s);", [WORKER_SINGLETON_LOCK_KEY])
+
+        other = _raw_connection()
+        try:
+            with other.cursor() as cur:
+                cur.execute("SELECT pg_try_advisory_lock(%s);", [WORKER_SINGLETON_LOCK_KEY])
+                self.assertTrue(cur.fetchone()[0])
+                cur.execute("SELECT pg_advisory_unlock(%s);", [WORKER_SINGLETON_LOCK_KEY])
+        finally:
+            other.close()

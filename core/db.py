@@ -16,6 +16,24 @@ HNSW_MAX_DIMENSIONS = 2000
 
 INDEX_NAME = "idx_chunks_embedding"
 
+# Arbitrary, fixed key for the worker singleton advisory lock (see
+# acquire_worker_singleton_lock). Any int32 works; it only needs to be constant
+# and not collide with another advisory lock use in this database -- there are
+# none today.
+WORKER_SINGLETON_LOCK_KEY = 727100
+
+
+def acquire_worker_singleton_lock():
+    """Non-blocking Postgres advisory lock ensuring at most one worker process is
+    ever active at a time. Held for the lifetime of the calling process's DB
+    connection -- Postgres releases it automatically the moment that connection
+    closes (clean exit, crash, or container restart), so a dead worker never
+    permanently locks out its replacement. Returns True if this process now holds
+    the lock, False if another process already does."""
+    with connection.cursor() as cur:
+        cur.execute("SELECT pg_try_advisory_lock(%s);", [WORKER_SINGLETON_LOCK_KEY])
+        return cur.fetchone()[0]
+
 
 def _index_exists(cur):
     cur.execute(
