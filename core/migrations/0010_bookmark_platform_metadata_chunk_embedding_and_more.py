@@ -32,6 +32,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="config",
             name="setup_complete",
-            field=models.BooleanField(default=True),
+            field=models.BooleanField(default=False),
         ),
     ]
